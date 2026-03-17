@@ -103,6 +103,19 @@ class PM2Service: ObservableObject {
         await runControl(["kill"], environment: environment)
     }
 
+    func clearEnvironment(_ environment: PM2Environment) {
+        try? FileManager.default.removeItem(atPath: environment.path)
+        environments.removeAll { $0.path == environment.path }
+    }
+
+    func clearInactiveEnvironments() {
+        let inactive = environments.filter { !$0.isActive }
+        for env in inactive {
+            try? FileManager.default.removeItem(atPath: env.path)
+        }
+        environments.removeAll { !$0.isActive }
+    }
+
     // MARK: - Log Streaming
 
     func startLogStream(

@@ -130,16 +130,20 @@ struct EnvironmentSectionView: View {
                 }
 
                 if environment.isActive {
-                    Button {
+                    ConfirmableButton(
+                        icon: "power",
+                        confirmText: "Kill?",
+                        help: "Kill PM2 daemon"
+                    ) {
                         Task { await pm2Service.killDaemon(environment: environment) }
-                    } label: {
-                        Image(systemName: "power")
-                            .font(.system(size: 10))
                     }
-                    .buttonStyle(.borderless)
-                    .help("Kill PM2 daemon")
-                    .onHover { hovering in
-                        if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                } else {
+                    ConfirmableButton(
+                        icon: "trash",
+                        confirmText: "Clear?",
+                        help: "Remove PM2 directory"
+                    ) {
+                        pm2Service.clearEnvironment(environment)
                     }
                 }
             }
