@@ -54,6 +54,56 @@ struct EnvironmentSectionView: View {
 
                     Spacer()
 
+                    if !crashLoopingProcesses.isEmpty {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                            .overlay {
+                                Color.clear
+                                    .frame(width: 24, height: 24)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        let prompt = headerCrashLoopPrompt()
+                                        NSPasteboard.general.clearContents()
+                                        NSPasteboard.general.setString(prompt, forType: .string)
+                                        copied = true
+                                    }
+                                    .onHover { hovering in
+                                        showCrashPopover = hovering
+                                        if hovering { copied = false }
+                                    }
+                            }
+                            .popover(isPresented: $showCrashPopover, attachmentAnchor: .point(.bottom), arrowEdge: .bottom) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: copied ? "checkmark" : "exclamationmark.triangle.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(copied ? .green : .orange)
+                                        Text(copied ? "Copied" : "\(crashLoopingProcesses.count) crash-looping")
+                                            .font(.system(size: 11, weight: .semibold))
+                                    }
+                                    if !copied {
+                                        ForEach(crashLoopingProcesses) { process in
+                                            Text("• \(process.name) (\(process.restartCount) restarts)")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Text("Click to copy debug prompt")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(10)
+                                .interactiveDismissDisabled()
+                            }
+                    }
+
+                    if let oldest = processes.map(\.createdAt).filter({ $0 > 0 }).min() {
+                        Text(formattedElapsed(since: oldest))
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+
                     let onlineCount = processes.filter(\.isOnline).count
                     Text("\(onlineCount)/\(processes.count)")
                         .font(.system(size: 11, design: .monospaced))
@@ -67,50 +117,6 @@ struct EnvironmentSectionView: View {
                     } else {
                         NSCursor.pop()
                     }
-                }
-
-                if !crashLoopingProcesses.isEmpty {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.orange)
-                        .overlay {
-                            Color.clear
-                                .frame(width: 24, height: 24)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    let prompt = headerCrashLoopPrompt()
-                                    NSPasteboard.general.clearContents()
-                                    NSPasteboard.general.setString(prompt, forType: .string)
-                                    copied = true
-                                }
-                                .onHover { hovering in
-                                    showCrashPopover = hovering
-                                    if hovering { copied = false }
-                                }
-                        }
-                        .popover(isPresented: $showCrashPopover, attachmentAnchor: .point(.bottom), arrowEdge: .bottom) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: copied ? "checkmark" : "exclamationmark.triangle.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(copied ? .green : .orange)
-                                    Text(copied ? "Copied" : "\(crashLoopingProcesses.count) crash-looping")
-                                        .font(.system(size: 11, weight: .semibold))
-                                }
-                                if !copied {
-                                    ForEach(crashLoopingProcesses) { process in
-                                        Text("• \(process.name) (\(process.restartCount) restarts)")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Text("Click to copy debug prompt")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .padding(10)
-                            .interactiveDismissDisabled()
-                        }
                 }
 
                 if environment.isActive {
@@ -140,6 +146,20 @@ struct EnvironmentSectionView: View {
             }
             configService.save()
         }
+    }
+
+    private func formattedElapsed(since timestamp: Int64) -> String {
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let elapsed = max(0, now - timestamp)
+        let seconds = elapsed / 1000
+        let minutes = seconds / 60
+        let hours = minutes / 60
+        let days = hours / 24
+
+        if days > 0 { return "\(days)d" }
+        if hours > 0 { return "\(hours)h" }
+        if minutes > 0 { return "\(minutes)m" }
+        return "\(seconds)s"
     }
 
     private func headerCrashLoopPrompt() -> String {
