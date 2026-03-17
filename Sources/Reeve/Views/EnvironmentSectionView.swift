@@ -7,6 +7,12 @@ struct EnvironmentSectionView: View {
     @EnvironmentObject var pm2Service: PM2Service
 
     @State private var isExpanded = true
+    @State private var showCrashPopover = false
+    @State private var copied = false
+
+    private var crashLoopingProcesses: [PM2Process] {
+        processes.filter(\.isCrashLooping)
+    }
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
@@ -48,12 +54,6 @@ struct EnvironmentSectionView: View {
 
                     Spacer()
 
-                    if processes.contains(where: \.isCrashLooping) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(.orange)
-                    }
-
                     let onlineCount = processes.filter(\.isOnline).count
                     Text("\(onlineCount)/\(processes.count)")
                         .font(.system(size: 11, design: .monospaced))
@@ -67,6 +67,50 @@ struct EnvironmentSectionView: View {
                     } else {
                         NSCursor.pop()
                     }
+                }
+
+                if !crashLoopingProcesses.isEmpty {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                        .overlay {
+                            Color.clear
+                                .frame(width: 24, height: 24)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    let prompt = headerCrashLoopPrompt()
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(prompt, forType: .string)
+                                    copied = true
+                                }
+                                .onHover { hovering in
+                                    showCrashPopover = hovering
+                                    if hovering { copied = false }
+                                }
+                        }
+                        .popover(isPresented: $showCrashPopover, attachmentAnchor: .point(.bottom), arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: copied ? "checkmark" : "exclamationmark.triangle.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(copied ? .green : .orange)
+                                    Text(copied ? "Copied" : "\(crashLoopingProcesses.count) crash-looping")
+                                        .font(.system(size: 11, weight: .semibold))
+                                }
+                                if !copied {
+                                    ForEach(crashLoopingProcesses) { process in
+                                        Text("• \(process.name) (\(process.restartCount) restarts)")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Text("Click to copy debug prompt")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(10)
+                            .interactiveDismissDisabled()
+                        }
                 }
 
                 if environment.isActive {
@@ -96,5 +140,29 @@ struct EnvironmentSectionView: View {
             }
             configService.save()
         }
+    }
+
+    private func headerCrashLoopPrompt() -> String {
+        let pm2Home = environment.path
+        let envFlag = "PM2_HOME=\(pm2Home)"
+        let items = crashLoopingProcesses.map { process -> String in
+            let elapsedMinutes: Int = {
+                guard process.createdAt > 0 else { return 0 }
+                let now = Int64(Date().timeIntervalSince1970 * 1000)
+                return max(1, Int((now - process.createdAt) / 60_000))
+            }()
+            return "- \"\(process.name)\" has crashed \(process.restartCount) times in \(elapsedMinutes) minute\(elapsedMinutes == 1 ? "" : "s") (current uptime: \(process.formattedUptime))"
+        }.joined(separator: "\n")
+
+        return """
+        The following PM2 processes in workspace "\(environment.name)" are crash-looping:
+
+        \(items)
+
+        To investigate, check the error logs:
+        \(crashLoopingProcesses.map { "\(envFlag) pm2 logs \($0.name) --lines 100 --err" }.joined(separator: "\n"))
+
+        Please diagnose why these processes keep crashing and fix the issues.
+        """
     }
 }
