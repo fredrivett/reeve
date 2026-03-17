@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var pm2Service: PM2Service
     @EnvironmentObject var configService: ConfigService
+    @State private var inactiveExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,6 +20,9 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Refresh")
+                .onHover { hovering in
+                    if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -75,7 +79,7 @@ struct ContentView: View {
                         }
 
                         if !inactiveEnvs.isEmpty {
-                            DisclosureGroup {
+                            DisclosureGroup(isExpanded: $inactiveExpanded) {
                                 VStack(alignment: .leading, spacing: 0) {
                                     ForEach(inactiveEnvs) { env in
                                         EnvironmentSectionView(
@@ -98,6 +102,12 @@ struct ContentView: View {
                                 Text("Inactive (\(inactiveEnvs.count))")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { inactiveExpanded.toggle() }
+                                    .onHover { hovering in
+                                        if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                                    }
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 4)

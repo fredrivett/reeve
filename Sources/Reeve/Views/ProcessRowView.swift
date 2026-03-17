@@ -80,6 +80,9 @@ struct ProcessRowView: View {
 
                 }
                 .disabled(isActing)
+                .onHover { hovering in
+                    if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
             }
 
             if showLogs {
