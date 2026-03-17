@@ -113,11 +113,5 @@ struct ContentView: View {
         }
         .frame(width: 380)
         .frame(minHeight: 200, maxHeight: 800)
-        .onAppear {
-            pm2Service.startPolling(interval: configService.config.pollIntervalSeconds)
-        }
-        .onDisappear {
-            pm2Service.stopPolling()
-        }
     }
 }
