@@ -98,6 +98,16 @@ struct EnvironmentSectionView: View {
                             }
                     }
 
+                    let totalCPU = processes.filter(\.isOnline).reduce(0.0) { $0 + $1.cpuPercent }
+                    Text(String(format: "%.0f%%", totalCPU))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.secondary)
+
+                    let totalMemMB = processes.filter(\.isOnline).reduce(0.0) { $0 + $1.memoryMB }
+                    Text(totalMemMB >= 1024 ? String(format: "%.1fGB", totalMemMB / 1024.0) : String(format: "%.0fMB", totalMemMB))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.secondary)
+
                     if let oldest = processes.map(\.createdAt).filter({ $0 > 0 }).min() {
                         Text(formattedElapsed(since: oldest))
                             .font(.system(size: 10, design: .monospaced))
