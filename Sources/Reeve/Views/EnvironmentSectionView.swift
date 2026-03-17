@@ -48,6 +48,12 @@ struct EnvironmentSectionView: View {
 
                     Spacer()
 
+                    if processes.contains(where: \.isCrashLooping) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                    }
+
                     let onlineCount = processes.filter(\.isOnline).count
                     Text("\(onlineCount)/\(processes.count)")
                         .font(.system(size: 11, design: .monospaced))
