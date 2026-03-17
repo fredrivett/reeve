@@ -93,14 +93,14 @@ struct ContentView: View {
                                         .frame(width: 1.5)
                                         .padding(.leading, 2)
                                 }
+                                .padding(.bottom, 8)
                             } label: {
                                 Text("Inactive (\(inactiveEnvs.count))")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }
                             .padding(.horizontal, 12)
-                            .padding(.top, 4)
-                            .padding(.bottom, 12)
+                            .padding(.vertical, 4)
                         }
                     }
                 }

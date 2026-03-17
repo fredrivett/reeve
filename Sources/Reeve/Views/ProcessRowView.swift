@@ -86,7 +86,7 @@ struct ProcessRowView: View {
                 LogPanelView(process: process, environment: environment)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 1)
     }
 
     private func performAction(_ action: @escaping () async -> Void) {
