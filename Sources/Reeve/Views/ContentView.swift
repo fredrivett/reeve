@@ -112,6 +112,6 @@ struct ContentView: View {
             .padding(.vertical, 6)
         }
         .frame(width: 380)
-        .frame(minHeight: 200, maxHeight: 800)
+        .frame(maxHeight: 800)
     }
 }
