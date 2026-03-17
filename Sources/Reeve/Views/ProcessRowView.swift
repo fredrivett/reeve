@@ -10,12 +10,27 @@ struct ProcessRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 StatusBadgeView(status: process.status)
 
                 Text(process.name)
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
+                    .onTapGesture { showLogs.toggle() }
+                    .onHover { hovering in
+                        if hovering {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
+
+                if process.isCrashLooping {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                        .help("Crash-looping (\(process.restartCount) restarts)")
+                }
 
                 Spacer()
 
@@ -63,14 +78,6 @@ struct ProcessRowView: View {
                     .buttonStyle(.borderless)
                     .help("Delete")
 
-                    Button {
-                        showLogs.toggle()
-                    } label: {
-                        Image(systemName: showLogs ? "text.below.photo.fill" : "text.below.photo")
-                            .font(.system(size: 10))
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Logs")
                 }
                 .disabled(isActing)
             }
