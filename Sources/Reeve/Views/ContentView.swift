@@ -99,15 +99,27 @@ struct ContentView: View {
                                 }
                                 .padding(.bottom, 8)
                             } label: {
-                                Text("Inactive (\(inactiveEnvs.count))")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { inactiveExpanded.toggle() }
-                                    .onHover { hovering in
-                                        if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                                HStack {
+                                    Text("Inactive (\(inactiveEnvs.count))")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { inactiveExpanded.toggle() }
+                                        .onHover { hovering in
+                                            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                                        }
+
+                                    if inactiveExpanded {
+                                        ConfirmableButton(
+                                            icon: "trash",
+                                            confirmText: "Clear all?",
+                                            help: "Remove all inactive PM2 directories"
+                                        ) {
+                                            pm2Service.clearInactiveEnvironments()
+                                        }
                                     }
+                                }
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 4)
