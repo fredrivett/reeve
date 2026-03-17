@@ -14,7 +14,11 @@ struct EnvironmentSectionView: View {
                 Text("No processes")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
-                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .background(Color.primary.opacity(0.05))
+                    .cornerRadius(6)
             } else {
                 ForEach(processes) { process in
                     ProcessRowView(process: process, environment: environment)

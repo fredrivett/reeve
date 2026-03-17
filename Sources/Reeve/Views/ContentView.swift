@@ -76,13 +76,22 @@ struct ContentView: View {
 
                         if !inactiveEnvs.isEmpty {
                             DisclosureGroup {
-                                ForEach(inactiveEnvs) { env in
-                                    EnvironmentSectionView(
-                                        environment: env,
-                                        processes: []
-                                    )
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 2)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    ForEach(inactiveEnvs) { env in
+                                        EnvironmentSectionView(
+                                            environment: env,
+                                            processes: []
+                                        )
+                                        .padding(.leading, 16)
+                                        .padding(.trailing, 12)
+                                        .padding(.vertical, 2)
+                                    }
+                                }
+                                .overlay(alignment: .leading) {
+                                    Rectangle()
+                                        .fill(Color.secondary.opacity(0.3))
+                                        .frame(width: 1.5)
+                                        .padding(.leading, 2)
                                 }
                             } label: {
                                 Text("Inactive (\(inactiveEnvs.count))")
@@ -90,7 +99,8 @@ struct ContentView: View {
                                     .foregroundColor(.secondary)
                             }
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
+                            .padding(.top, 4)
+                            .padding(.bottom, 12)
                         }
                     }
                 }
