@@ -79,6 +79,11 @@ struct ProcessRowView: View {
 
                 // Stats
                 if process.isOnline {
+                    if let port = process.port {
+                        Text(":\(String(port))")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
                     Text(process.formattedCPU)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)

@@ -23,6 +23,22 @@ struct ContentView: View {
                 .onHover { hovering in
                     if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
                 }
+
+                Menu {
+                    Button("Quit") {
+                        NSApplication.shared.terminate(nil)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 12))
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .frame(width: 16)
+                .opacity(0.6)
+                .onHover { hovering in
+                    if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -128,22 +144,8 @@ struct ContentView: View {
                 }
             }
 
-            Divider()
-
-            // Footer
-            HStack {
-                Spacer()
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
-                }
-                .buttonStyle(.borderless)
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
         }
-        .frame(width: 380)
+        .frame(width: 420)
         .frame(maxHeight: 800)
     }
 }

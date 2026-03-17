@@ -98,6 +98,12 @@ struct EnvironmentSectionView: View {
                             }
                     }
 
+                    if let portRange = formattedPortRange() {
+                        Text(portRange)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+
                     let totalCPU = processes.filter(\.isOnline).reduce(0.0) { $0 + $1.cpuPercent }
                     Text(String(format: "%.0f%%", totalCPU))
                         .font(.system(size: 10, design: .monospaced))
@@ -174,6 +180,26 @@ struct EnvironmentSectionView: View {
         if hours > 0 { return "\(hours)h" }
         if minutes > 0 { return "\(minutes)m" }
         return "\(seconds)s"
+    }
+
+    private func formattedPortRange() -> String? {
+        let ports = processes.compactMap(\.port).sorted()
+        guard !ports.isEmpty else { return nil }
+
+        let minPort = ports.first!
+        let maxPort = ports.last!
+
+        // If all ports fit within a 10-port range, show as e.g. "5500X"
+        let base = minPort / 10
+        if maxPort / 10 == base && maxPort - minPort < 10 {
+            return ":" + String(base) + "X"
+        }
+
+        // Otherwise show range
+        if minPort == maxPort {
+            return ":" + String(minPort)
+        }
+        return ":" + String(minPort) + "-" + String(maxPort)
     }
 
     private func headerCrashLoopPrompt() -> String {
