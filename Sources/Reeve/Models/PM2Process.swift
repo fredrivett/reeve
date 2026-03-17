@@ -37,9 +37,9 @@ struct PM2Process: Identifiable {
 
     var formattedMemory: String {
         if memoryMB >= 1024 {
-            return String(format: "%.1f GB", memoryMB / 1024.0)
+            return String(format: "%.1fGB", memoryMB / 1024.0)
         }
-        return String(format: "%.0f MB", memoryMB)
+        return String(format: "%.0fMB", memoryMB)
     }
 
     var formattedCPU: String {

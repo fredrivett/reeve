@@ -31,26 +31,37 @@ struct EnvironmentSectionView: View {
                 .padding(.vertical, 4)
             }
         } label: {
-            HStack {
-                Text(environment.name)
-                    .font(.system(size: 13, weight: .semibold))
+            HStack(alignment: .center) {
+                HStack(alignment: .center) {
+                    Text(environment.name)
+                        .font(.system(size: 13, weight: .semibold))
 
-                if !environment.isActive {
-                    Text("offline")
-                        .font(.system(size: 9))
+                    if !environment.isActive {
+                        Text("offline")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.secondary.opacity(0.15))
+                            .cornerRadius(3)
+                    }
+
+                    Spacer()
+
+                    let onlineCount = processes.filter(\.isOnline).count
+                    Text("\(onlineCount)/\(processes.count)")
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.secondary.opacity(0.15))
-                        .cornerRadius(3)
                 }
-
-                Spacer()
-
-                let onlineCount = processes.filter(\.isOnline).count
-                Text("\(onlineCount)/\(processes.count)")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.secondary)
+                .contentShape(Rectangle())
+                .onTapGesture { isExpanded.toggle() }
+                .onHover { hovering in
+                    if hovering {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
 
                 if environment.isActive {
                     Button {
@@ -61,6 +72,9 @@ struct EnvironmentSectionView: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Kill PM2 daemon")
+                    .onHover { hovering in
+                        if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                    }
                 }
             }
             .padding(.trailing, -4)
