@@ -41,6 +41,9 @@ struct EnvironmentSectionView: View {
                 HStack(alignment: .center) {
                     Text(environment.name)
                         .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(-1)
 
                     if !environment.isActive {
                         Text("offline")
