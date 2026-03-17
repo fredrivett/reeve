@@ -1,5 +1,29 @@
 import Foundation
 
+/// Decodes a value that may be a JSON string or number into an Int.
+private enum StringOrInt: Decodable {
+    case string(String)
+    case int(Int)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let v = try? container.decode(Int.self) {
+            self = .int(v)
+        } else if let v = try? container.decode(String.self) {
+            self = .string(v)
+        } else {
+            throw DecodingError.typeMismatch(StringOrInt.self, .init(codingPath: decoder.codingPath, debugDescription: "Expected String or Int"))
+        }
+    }
+
+    var intValue: Int? {
+        switch self {
+        case .int(let v): return v
+        case .string(let v): return Int(v)
+        }
+    }
+}
+
 struct PM2Process: Identifiable {
     let pid: Int
     let name: String
@@ -16,6 +40,7 @@ struct PM2Process: Identifiable {
     let createdAt: Int64
     let outLogPath: String
     let errLogPath: String
+    let port: Int?
 
     var id: String { "\(pmId)" }
 
@@ -77,7 +102,7 @@ extension PM2Process: Decodable {
     }
 
     private enum EnvKeys: String, CodingKey {
-        case status, namespace
+        case status, namespace, args
         case pmExecPath = "pm_exec_path"
         case pmCwd = "pm_cwd"
         case execMode = "exec_mode"
@@ -86,6 +111,9 @@ extension PM2Process: Decodable {
         case createdAt = "created_at"
         case pmOutLogPath = "pm_out_log_path"
         case pmErrLogPath = "pm_err_log_path"
+        // Common port env vars
+        case envPORT = "PORT"
+        case envGPTZeroPort = "GPTZERO_CUSTOM_PORT"
     }
 
     init(from decoder: Decoder) throws {
@@ -109,5 +137,21 @@ extension PM2Process: Decodable {
         createdAt = try env.decodeIfPresent(Int64.self, forKey: .createdAt) ?? 0
         outLogPath = try env.decodeIfPresent(String.self, forKey: .pmOutLogPath) ?? ""
         errLogPath = try env.decodeIfPresent(String.self, forKey: .pmErrLogPath) ?? ""
+
+        // Extract port: first try args (--port N, -p N), then common env vars
+        let args = try env.decodeIfPresent([String].self, forKey: .args) ?? []
+        let argsJoined = args.joined(separator: " ")
+        let portPattern = try? NSRegularExpression(pattern: #"(?:--port|-p)\s+(\d+)"#)
+        if let match = portPattern?.firstMatch(in: argsJoined, range: NSRange(argsJoined.startIndex..., in: argsJoined)),
+           let range = Range(match.range(at: 1), in: argsJoined),
+           let parsed = Int(argsJoined[range]) {
+            port = parsed
+        } else if let envPort = try env.decodeIfPresent(StringOrInt.self, forKey: .envGPTZeroPort) {
+            port = envPort.intValue
+        } else if let envPort = try env.decodeIfPresent(StringOrInt.self, forKey: .envPORT) {
+            port = envPort.intValue
+        } else {
+            port = nil
+        }
     }
 }
