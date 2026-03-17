@@ -23,6 +23,14 @@ struct PM2Process: Identifiable {
     var isStopped: Bool { status == "stopped" }
     var isErrored: Bool { status == "errored" }
 
+    /// Process is crash-looping: restarted multiple times and uptime under 30s
+    var isCrashLooping: Bool {
+        guard isOnline, restartCount >= 3, uptime > 0 else { return false }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let uptimeMs = max(0, now - uptime)
+        return uptimeMs < 30_000
+    }
+
     var memoryMB: Double {
         Double(memoryBytes) / 1_048_576.0
     }
