@@ -17,13 +17,19 @@ class PM2Service: ObservableObject {
     private let scanner = EnvironmentScanner()
     private let notificationService = NotificationService()
     private var timer: Timer?
-    private let maxConcurrency = 8
+    private var cachedResolution: PM2BinaryResolver.Resolution?
+
+    var isPolling = false
 
     init() {
         notificationService.requestPermission()
+        // Start polling immediately on creation
+        startPolling()
     }
 
     func startPolling(interval: TimeInterval = 3.0) {
+        guard !isPolling else { return }
+        isPolling = true
         // Initial fetch
         Task { await refresh() }
 
@@ -44,6 +50,7 @@ class PM2Service: ObservableObject {
         let resolution: PM2BinaryResolver.Resolution
         do {
             resolution = try await resolver.resolve()
+            cachedResolution = resolution
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -54,34 +61,27 @@ class PM2Service: ObservableObject {
         let activeEnvironments = scanned.filter(\.isActive)
         environments = scanned
 
-        // Fetch processes from all active environments concurrently, capped
-        var results: [String: [PM2Process]] = [:]
+        // Fetch processes from all active environments concurrently off the main actor
+        let fetchedResults = await Task.detached { () -> [String: [PM2Process]] in
+            let lock = NSLock()
+            var results: [String: [PM2Process]] = [:]
 
-        await withTaskGroup(of: (String, [PM2Process]).self) { group in
-            var launched = 0
-            for env in activeEnvironments {
-                if launched >= maxConcurrency {
-                    if let result = await group.next() {
-                        results[result.0] = result.1
-                    }
-                }
-                group.addTask { [weak self] in
-                    guard let self else { return (env.path, []) }
-                    let processes = await self.fetchProcesses(for: env, using: resolution)
-                    return (env.path, processes)
-                }
-                launched += 1
+            DispatchQueue.concurrentPerform(iterations: activeEnvironments.count) { index in
+                let env = activeEnvironments[index]
+                let processes = PM2Service.fetchProcessesSync(for: env, using: resolution)
+                lock.lock()
+                results[env.path] = processes
+                lock.unlock()
             }
-            for await result in group {
-                results[result.0] = result.1
-            }
-        }
 
-        processesByEnvironment = results
+            return results
+        }.value
+
+        processesByEnvironment = fetchedResults
 
         // Check for crash/restart notifications
         for env in activeEnvironments {
-            if let processes = results[env.path] {
+            if let processes = fetchedResults[env.path] {
                 notificationService.checkForChanges(environment: env, processes: processes)
             }
         }
@@ -106,7 +106,7 @@ class PM2Service: ObservableObject {
         environment: PM2Environment,
         onLine: @escaping @Sendable (String) -> Void
     ) -> Process? {
-        guard let resolution = try? _syncResolve() else { return nil }
+        guard let resolution = cachedResolution else { return nil }
 
         let proc = Process()
         let pipe = Pipe()
@@ -114,7 +114,7 @@ class PM2Service: ObservableObject {
 
         proc.executableURL = URL(fileURLWithPath: resolution.binary)
         proc.arguments = ["logs", process.name, "--lines", "50"]
-        proc.environment = buildEnv(resolution: resolution, pm2Home: environment.path)
+        proc.environment = PM2Service.buildEnvDict(resolution: resolution, pm2Home: environment.path)
         proc.standardOutput = pipe
         proc.standardError = errPipe
 
@@ -147,81 +147,53 @@ class PM2Service: ObservableObject {
 
     // MARK: - Private
 
-    private nonisolated func fetchProcesses(
+    // Synchronous process fetch — runs off main actor via Task.detached
+    private nonisolated static func fetchProcessesSync(
         for environment: PM2Environment,
         using resolution: PM2BinaryResolver.Resolution
-    ) async -> [PM2Process] {
+    ) -> [PM2Process] {
         do {
-            let data = try await runPM2(["jlist"], environment: environment, using: resolution)
-            return (try? JSONDecoder().decode([PM2Process].self, from: data)) ?? []
+            let data = try runPM2Sync(["jlist"], environment: environment, using: resolution)
+            let processes = try JSONDecoder().decode([PM2Process].self, from: data)
+            return processes
         } catch {
+            // Silently return empty for environments with no processes or errors
             return []
         }
     }
 
-    private nonisolated func runPM2(
+    private nonisolated static func runPM2Sync(
         _ args: [String],
         environment: PM2Environment,
         using resolution: PM2BinaryResolver.Resolution
-    ) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            let pipe = Pipe()
+    ) throws -> Data {
+        let process = Process()
+        let pipe = Pipe()
 
-            process.executableURL = URL(fileURLWithPath: resolution.binary)
-            process.arguments = args
-            process.environment = buildEnv(resolution: resolution, pm2Home: environment.path)
-            process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
+        process.executableURL = URL(fileURLWithPath: resolution.binary)
+        process.arguments = args
+        process.environment = buildEnvDict(resolution: resolution, pm2Home: environment.path)
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
 
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-                return
-            }
-
-            process.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            continuation.resume(returning: data)
-        }
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return data
     }
 
-    private func runControl(_ args: [String], environment: PM2Environment) async {
-        guard let resolution = try? await resolver.resolve() else { return }
-        _ = try? await runPM2(args, environment: environment, using: resolution)
-        // Refresh immediately after control action
-        await refresh()
-    }
-
-    private nonisolated func buildEnv(resolution: PM2BinaryResolver.Resolution, pm2Home: String) -> [String: String] {
+    private nonisolated static func buildEnvDict(resolution: PM2BinaryResolver.Resolution, pm2Home: String) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         env["PM2_HOME"] = pm2Home
         env["PATH"] = resolution.path
         return env
     }
 
-    // Synchronous resolve for log streaming (uses cached value)
-    private nonisolated func _syncResolve() throws -> PM2BinaryResolver.Resolution {
-        // We need a synchronous path here — use a semaphore for the rare case cache is empty
-        let semaphore = DispatchSemaphore(value: 0)
-        var result: PM2BinaryResolver.Resolution?
-        var resolveError: Error?
-
-        Task {
-            do {
-                result = try await resolver.resolve()
-            } catch {
-                resolveError = error
-            }
-            semaphore.signal()
-        }
-        semaphore.wait()
-
-        if let error = resolveError { throw error }
-        guard let resolution = result else {
-            throw PM2BinaryResolver.ResolverError.notFound
-        }
-        return resolution
+    private func runControl(_ args: [String], environment: PM2Environment) async {
+        guard let resolution = try? await resolver.resolve() else { return }
+        _ = await Task.detached {
+            try? PM2Service.runPM2Sync(args, environment: environment, using: resolution)
+        }.value
+        await refresh()
     }
 }
