@@ -25,14 +25,14 @@ struct ProcessRowView: View {
                         }
                     }
 
+                Spacer()
+
                 if process.isCrashLooping {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 10))
                         .foregroundColor(.orange)
                         .help("Crash-looping (\(process.restartCount) restarts)")
                 }
-
-                Spacer()
 
                 // Stats
                 if process.isOnline {

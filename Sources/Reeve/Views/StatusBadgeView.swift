@@ -6,7 +6,9 @@ struct StatusBadgeView: View {
     private var color: Color {
         switch status {
         case "online": return .green
+        case "launching", "stopping": return .yellow
         case "errored": return .red
+        case "stopped": return .gray
         default: return .gray
         }
     }
