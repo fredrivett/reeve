@@ -99,6 +99,10 @@ class PM2Service: ObservableObject {
         await runControl(["delete", process.name], environment: environment)
     }
 
+    func killDaemon(environment: PM2Environment) async {
+        await runControl(["kill"], environment: environment)
+    }
+
     // MARK: - Log Streaming
 
     func startLogStream(

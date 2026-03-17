@@ -4,6 +4,7 @@ struct EnvironmentSectionView: View {
     let environment: PM2Environment
     let processes: [PM2Process]
     @EnvironmentObject var configService: ConfigService
+    @EnvironmentObject var pm2Service: PM2Service
 
     @State private var isExpanded = true
 
@@ -43,6 +44,17 @@ struct EnvironmentSectionView: View {
                 Text("\(onlineCount)/\(processes.count)")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.secondary)
+
+                if environment.isActive {
+                    Button {
+                        Task { await pm2Service.killDaemon(environment: environment) }
+                    } label: {
+                        Image(systemName: "power")
+                            .font(.system(size: 10))
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Kill PM2 daemon")
+                }
             }
         }
         .onAppear {
