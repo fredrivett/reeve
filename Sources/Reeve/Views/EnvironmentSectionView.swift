@@ -20,12 +20,15 @@ struct EnvironmentSectionView: View {
                     .background(Color.primary.opacity(0.05))
                     .cornerRadius(6)
             } else {
-                ForEach(processes) { process in
-                    ProcessRowView(process: process, environment: environment)
-                    if process.id != processes.last?.id {
-                        Divider()
+                VStack(spacing: 2) {
+                    ForEach(processes) { process in
+                        ProcessRowView(process: process, environment: environment)
+                        if process.id != processes.last?.id {
+                            Divider()
+                        }
                     }
                 }
+                .padding(.vertical, 4)
             }
         } label: {
             HStack {
@@ -60,6 +63,7 @@ struct EnvironmentSectionView: View {
                     .help("Kill PM2 daemon")
                 }
             }
+            .padding(.trailing, -4)
         }
         .onAppear {
             isExpanded = !configService.isCollapsed(environment.path)
