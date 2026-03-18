@@ -280,7 +280,7 @@ public struct ContentView: View {
 
         }
         .padding(.bottom, 4)
-        .frame(width: 420)
+        .frame(width: 460)
         .frame(maxHeight: 800)
     }
 
