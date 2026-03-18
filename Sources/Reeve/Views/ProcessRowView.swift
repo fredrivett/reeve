@@ -82,7 +82,16 @@ struct ProcessRowView: View {
                     if let port = process.port {
                         Text(":\(String(port))")
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(Color.accentColor)
+                            .onHover { hovering in
+                                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                            }
+                            .onTapGesture {
+                                if let url = URL(string: "http://localhost:\(port)") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }
+                            .help("Open http://localhost:\(String(port))")
                     }
                     HStack(spacing: 2) {
                         if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
