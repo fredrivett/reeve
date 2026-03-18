@@ -1,12 +1,14 @@
 import SwiftUI
 
-struct ContentView: View {
+public struct ContentView: View {
     @EnvironmentObject var pm2Service: PM2Service
     @EnvironmentObject var configService: ConfigService
     @State private var inactiveExpanded = false
     @State private var shimmerInactive = false
 
-    var body: some View {
+    public init() {}
+
+    public var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {

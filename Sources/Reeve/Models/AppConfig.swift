@@ -1,12 +1,14 @@
 import Foundation
 
-struct AppConfig: Codable {
-    var pollIntervalSeconds: Double = 3.0
-    var collapsedEnvironments: Set<String> = []
-    var hiddenEnvironments: Set<String> = []
+public struct AppConfig: Codable {
+    public var pollIntervalSeconds: Double = 3.0
+    public var collapsedEnvironments: Set<String> = []
+    public var hiddenEnvironments: Set<String> = []
 
     // Not persisted — inactive environments always start collapsed
-    var expandedInactiveEnvironments: Set<String> = []
+    public var expandedInactiveEnvironments: Set<String> = []
+
+    public init() {}
 
     enum CodingKeys: String, CodingKey {
         case pollIntervalSeconds, collapsedEnvironments, hiddenEnvironments

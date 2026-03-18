@@ -130,10 +130,19 @@ struct LogPanelView: View {
     }
 }
 
-private func stripAnsiCodes(_ string: String) -> String {
+public func stripAnsiCodes(_ string: String) -> String {
     string.replacingOccurrences(
         of: "\\x1B\\[[0-9;]*[a-zA-Z]|\\x1B\\([a-zA-Z]",
         with: "",
         options: .regularExpression
     )
+}
+
+/// Returns true if the log line should be displayed (not an empty PM2 prefix line).
+public func shouldDisplayLogLine(_ line: String) -> Bool {
+    guard !line.isEmpty else { return false }
+    if let range = line.range(of: #"^\d+\|\S+ \| "#, options: .regularExpression) {
+        return !line[range.upperBound...].trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    return true
 }

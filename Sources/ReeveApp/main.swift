@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ReeveLib
 
 @main
 struct ReeveApp: App {
@@ -25,7 +26,7 @@ struct ReeveApp: App {
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.primary, .primary)
                     .font(.system(size: 22))
-                Text(count > 0 ? "\(count)" : "–")
+                Text(count > 0 ? "\(count)" : "\u{2013}")
             }
         }
         .menuBarExtraStyle(.window)

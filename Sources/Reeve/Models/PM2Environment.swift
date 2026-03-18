@@ -1,13 +1,13 @@
 import Foundation
 
-struct PM2Environment: Identifiable, Hashable {
-    let path: String
-    let name: String
-    var isActive: Bool
+public struct PM2Environment: Identifiable, Hashable {
+    public let path: String
+    public let name: String
+    public var isActive: Bool
 
-    var id: String { path }
+    public var id: String { path }
 
-    init(path: String, isActive: Bool = false) {
+    public init(path: String, isActive: Bool = false) {
         self.path = path
         self.isActive = isActive
 

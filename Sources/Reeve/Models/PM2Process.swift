@@ -24,54 +24,54 @@ private enum StringOrInt: Decodable {
     }
 }
 
-struct PM2Process: Identifiable {
-    let pid: Int
-    let name: String
-    let pmId: Int
-    let memoryBytes: Int
-    let cpuPercent: Double
-    let status: String
-    let namespace: String
-    let execPath: String
-    let cwd: String
-    let execMode: String
-    let uptime: Int64
-    let restartCount: Int
-    let createdAt: Int64
-    let outLogPath: String
-    let errLogPath: String
-    let port: Int?
+public struct PM2Process: Identifiable {
+    public let pid: Int
+    public let name: String
+    public let pmId: Int
+    public let memoryBytes: Int
+    public let cpuPercent: Double
+    public let status: String
+    public let namespace: String
+    public let execPath: String
+    public let cwd: String
+    public let execMode: String
+    public let uptime: Int64
+    public let restartCount: Int
+    public let createdAt: Int64
+    public let outLogPath: String
+    public let errLogPath: String
+    public let port: Int?
 
-    var id: String { "\(pmId)" }
+    public var id: String { "\(pmId)" }
 
-    var isOnline: Bool { status == "online" }
-    var isStopped: Bool { status == "stopped" }
-    var isErrored: Bool { status == "errored" }
+    public var isOnline: Bool { status == "online" }
+    public var isStopped: Bool { status == "stopped" }
+    public var isErrored: Bool { status == "errored" }
 
     /// Process is crash-looping: restarted multiple times and uptime under 30s
-    var isCrashLooping: Bool {
+    public var isCrashLooping: Bool {
         guard isOnline, restartCount >= 3, uptime > 0 else { return false }
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let uptimeMs = max(0, now - uptime)
         return uptimeMs < 30_000
     }
 
-    var memoryMB: Double {
+    public var memoryMB: Double {
         Double(memoryBytes) / 1_048_576.0
     }
 
-    var formattedMemory: String {
+    public var formattedMemory: String {
         if memoryMB >= 1024 {
             return String(format: "%.1fGB", memoryMB / 1024.0)
         }
         return String(format: "%.0fMB", memoryMB)
     }
 
-    var formattedCPU: String {
+    public var formattedCPU: String {
         String(format: "%.0f%%", cpuPercent)
     }
 
-    var formattedUptime: String {
+    public var formattedUptime: String {
         guard uptime > 0 else { return "–" }
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let elapsed = max(0, now - uptime)
@@ -116,7 +116,7 @@ extension PM2Process: Decodable {
         case envGPTZeroPort = "GPTZERO_CUSTOM_PORT"
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let top = try decoder.container(keyedBy: TopKeys.self)
         pid = try top.decode(Int.self, forKey: .pid)
         name = try top.decode(String.self, forKey: .name)

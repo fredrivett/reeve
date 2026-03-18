@@ -1,12 +1,12 @@
 import Foundation
 import Combine
 
-class ConfigService: ObservableObject {
-    @Published var config: AppConfig
+public class ConfigService: ObservableObject {
+    @Published public var config: AppConfig
 
     private let configURL: URL
 
-    init() {
+    public init() {
         let configDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/reeve", isDirectory: true)
         configURL = configDir.appendingPathComponent("config.json")
@@ -20,7 +20,7 @@ class ConfigService: ObservableObject {
         }
     }
 
-    func save() {
+    public func save() {
         let dir = configURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
@@ -29,7 +29,7 @@ class ConfigService: ObservableObject {
         }
     }
 
-    func toggleCollapsed(_ environmentPath: String) {
+    public func toggleCollapsed(_ environmentPath: String) {
         if config.collapsedEnvironments.contains(environmentPath) {
             config.collapsedEnvironments.remove(environmentPath)
         } else {
@@ -38,7 +38,7 @@ class ConfigService: ObservableObject {
         save()
     }
 
-    func isCollapsed(_ environmentPath: String) -> Bool {
+    public func isCollapsed(_ environmentPath: String) -> Bool {
         config.collapsedEnvironments.contains(environmentPath)
     }
 }
