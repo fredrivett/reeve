@@ -1,3 +1,4 @@
+import ServiceManagement
 import SwiftUI
 
 public struct ContentView: View {
@@ -5,6 +6,23 @@ public struct ContentView: View {
     @EnvironmentObject var configService: ConfigService
     @State private var inactiveExpanded = false
     @State private var shimmerInactive = false
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { SMAppService.mainApp.status == .enabled },
+            set: { newValue in
+                do {
+                    if newValue {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                } catch {
+                    print("Launch at login error: \(error)")
+                }
+            }
+        )
+    }
 
     public init() {}
 
@@ -55,6 +73,8 @@ public struct ContentView: View {
                 }
 
                 Menu {
+                    Toggle("Launch at Login", isOn: launchAtLoginBinding)
+                    Divider()
                     Button("Quit") {
                         NSApplication.shared.terminate(nil)
                     }
