@@ -11,14 +11,14 @@ struct AlignedDisclosureGroupStyle: DisclosureGroupStyle {
     func makeBody(configuration: Configuration) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation { configuration.isExpanded.toggle() }
+                configuration.isExpanded.toggle()
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
                         .rotationEffect(configuration.isExpanded ? .degrees(90) : .zero)
-                        .animation(.easeInOut(duration: 0.15), value: configuration.isExpanded)
-                        .frame(width: Layout.indicatorColumnWidth)
+                        .frame(width: Layout.indicatorColumnWidth, height: Layout.indicatorColumnWidth)
+                        .animation(nil, value: configuration.isExpanded)
                     configuration.label
                 }
             }
