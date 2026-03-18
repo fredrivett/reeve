@@ -9,7 +9,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Reeve")
+                Text("reeve")
                     .font(.system(size: 14, weight: .bold))
                 Spacer()
                 Button {
