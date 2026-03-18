@@ -4,19 +4,31 @@ public struct GitInfo: Hashable, Sendable {
     public let repoName: String
     public let branch: String
 
+    // Matches a Linear-style ticket: 2-5 letters followed by a dash and digits (e.g. "eng-3338", "FE-12")
+    private static let ticketPattern = #"[a-zA-Z]{2,5}-\d+"#
+
     /// Format the branch name for display, applying optional stripping rules.
     public func displayBranch(stripPrefix: Bool, stripTicket: Bool) -> String {
         var result = branch
-        // Strip everything before and including the last slash: "fredrivett/my-branch" → "my-branch"
-        if stripPrefix, let slashIndex = result.lastIndex(of: "/") {
-            result = String(result[result.index(after: slashIndex)...])
+
+        // Strip username prefix — everything before the ticket or before a slash
+        // Handles both "fredrivett/eng-3338-fix" and "fredrivett-eng-3338-fix"
+        if stripPrefix {
+            if let range = result.range(of: Self.ticketPattern, options: .regularExpression) {
+                // Username is everything before the ticket, trim trailing slash or dash
+                result = String(result[range.lowerBound...])
+            } else if let slashIndex = result.lastIndex(of: "/") {
+                // No ticket found, fall back to stripping at last slash
+                result = String(result[result.index(after: slashIndex)...])
+            }
         }
+
         // Strip ticket prefix like "eng-1234-": "eng-3338-next-button-fix" → "next-button-fix"
         if stripTicket {
             result = result.replacingOccurrences(
-                of: #"^.*?eng-\d+-"#,
+                of: #"^[a-zA-Z]{2,5}-\d+-"#,
                 with: "",
-                options: [.regularExpression, .caseInsensitive]
+                options: .regularExpression
             )
         }
         return result

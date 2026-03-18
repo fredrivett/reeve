@@ -16,11 +16,17 @@ public struct SettingsView: View {
                 get: { configService.config.stripBranchPrefix },
                 set: { configService.config.stripBranchPrefix = $0; configService.save() }
             ))
-            .disabled(!configService.config.showRepoName)
+            .disabled(!configService.config.showRepoName || configService.config.stripTicketPrefix)
 
             Toggle("Strip ticket prefix", isOn: Binding(
                 get: { configService.config.stripTicketPrefix },
-                set: { configService.config.stripTicketPrefix = $0; configService.save() }
+                set: { newValue in
+                    configService.config.stripTicketPrefix = newValue
+                    if newValue {
+                        configService.config.stripBranchPrefix = true
+                    }
+                    configService.save()
+                }
             ))
             .disabled(!configService.config.showRepoName)
         }

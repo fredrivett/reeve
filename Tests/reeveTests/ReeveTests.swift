@@ -882,29 +882,41 @@ struct GitInfoTests {
         #expect(gi.displayBranch(stripPrefix: false, stripTicket: false) == "fredrivett/eng-3338-next-button-fix")
     }
 
-    @Test("displayBranch strips prefix only")
-    func displayBranchStripPrefix() {
+    // -- Strip prefix with slash separator --
+
+    @Test("displayBranch strips slash prefix with ticket")
+    func displayBranchStripSlashPrefix() {
         let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
         #expect(gi.displayBranch(stripPrefix: true, stripTicket: false) == "eng-3338-next-button-fix")
     }
 
+    @Test("displayBranch strips slash prefix without ticket")
+    func displayBranchStripSlashPrefixNoTicket() {
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett/my-feature")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: false) == "my-feature")
+    }
+
+    // -- Strip prefix with dash separator --
+
+    @Test("displayBranch strips dash prefix with ticket")
+    func displayBranchStripDashPrefix() {
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett-eng-3338-next-button-fix")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: false) == "eng-3338-next-button-fix")
+    }
+
+    @Test("displayBranch does not strip dash prefix without ticket")
+    func displayBranchDashPrefixNoTicket() {
+        // No ticket pattern found, no slash — nothing to strip
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett-my-feature")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: false) == "fredrivett-my-feature")
+    }
+
+    // -- Strip ticket --
+
     @Test("displayBranch strips ticket only")
     func displayBranchStripTicket() {
-        // The .*? before eng- consumes "fredrivett/" as part of the match
-        let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
+        let gi = GitInfo(repoName: "repo", branch: "eng-3338-next-button-fix")
         #expect(gi.displayBranch(stripPrefix: false, stripTicket: true) == "next-button-fix")
-    }
-
-    @Test("displayBranch strips both")
-    func displayBranchStripBoth() {
-        let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
-        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "next-button-fix")
-    }
-
-    @Test("displayBranch no-op when no prefix or ticket")
-    func displayBranchNoMatch() {
-        let gi = GitInfo(repoName: "repo", branch: "main")
-        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "main")
     }
 
     @Test("displayBranch strips ticket case-insensitively")
@@ -913,10 +925,44 @@ struct GitInfoTests {
         #expect(gi.displayBranch(stripPrefix: false, stripTicket: true) == "fix")
     }
 
-    @Test("displayBranch with multiple slashes strips last")
+    @Test("displayBranch strips short team key ticket")
+    func displayBranchShortTeamKey() {
+        let gi = GitInfo(repoName: "repo", branch: "FE-12-button-fix")
+        #expect(gi.displayBranch(stripPrefix: false, stripTicket: true) == "button-fix")
+    }
+
+    // -- Strip both --
+
+    @Test("displayBranch strips both with slash")
+    func displayBranchStripBothSlash() {
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "next-button-fix")
+    }
+
+    @Test("displayBranch strips both with dash")
+    func displayBranchStripBothDash() {
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett-eng-3338-next-button-fix")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "next-button-fix")
+    }
+
+    // -- Edge cases --
+
+    @Test("displayBranch no-op when no prefix or ticket")
+    func displayBranchNoMatch() {
+        let gi = GitInfo(repoName: "repo", branch: "main")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "main")
+    }
+
+    @Test("displayBranch with multiple slashes strips at ticket")
     func displayBranchMultipleSlashes() {
         let gi = GitInfo(repoName: "repo", branch: "feature/team/eng-99-thing")
         #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "thing")
+    }
+
+    @Test("displayBranch ticket-only branch keeps ticket when not stripping ticket")
+    func displayBranchTicketOnly() {
+        let gi = GitInfo(repoName: "repo", branch: "eng-3338-fix")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: false) == "eng-3338-fix")
     }
 
     @Test("GitInfo is hashable")
