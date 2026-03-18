@@ -6,16 +6,43 @@ struct EnvironmentSectionView: View {
     @EnvironmentObject var configService: ConfigService
     @EnvironmentObject var pm2Service: PM2Service
 
-    @State private var isExpanded = true
     @State private var showCrashPopover = false
     @State private var copied = false
+
+    private var isExpanded: Binding<Bool> {
+        Binding(
+            get: {
+                // Inactive environments default to collapsed
+                if !environment.isActive {
+                    return configService.config.expandedInactiveEnvironments.contains(environment.path)
+                }
+                return !configService.isCollapsed(environment.path)
+            },
+            set: { newValue in
+                if !environment.isActive {
+                    if newValue {
+                        configService.config.expandedInactiveEnvironments.insert(environment.path)
+                    } else {
+                        configService.config.expandedInactiveEnvironments.remove(environment.path)
+                    }
+                } else {
+                    if newValue {
+                        configService.config.collapsedEnvironments.remove(environment.path)
+                    } else {
+                        configService.config.collapsedEnvironments.insert(environment.path)
+                    }
+                }
+                configService.save()
+            }
+        )
+    }
 
     private var crashLoopingProcesses: [PM2Process] {
         processes.filter(\.isCrashLooping)
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
+        DisclosureGroup(isExpanded: isExpanded) {
             if processes.isEmpty {
                 Text("No processes")
                     .font(.system(size: 11))
@@ -129,7 +156,7 @@ struct EnvironmentSectionView: View {
                         .foregroundColor(.secondary)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { isExpanded.toggle() }
+                .onTapGesture { isExpanded.wrappedValue.toggle() }
                 .onHover { hovering in
                     if hovering {
                         NSCursor.pointingHand.push()
@@ -157,17 +184,6 @@ struct EnvironmentSectionView: View {
                 }
             }
             .padding(.trailing, -4)
-        }
-        .onAppear {
-            isExpanded = !configService.isCollapsed(environment.path)
-        }
-        .onChange(of: isExpanded) { newValue in
-            if newValue {
-                configService.config.collapsedEnvironments.remove(environment.path)
-            } else {
-                configService.config.collapsedEnvironments.insert(environment.path)
-            }
-            configService.save()
         }
     }
 
