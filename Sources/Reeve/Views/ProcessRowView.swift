@@ -146,7 +146,7 @@ struct ProcessRowView: View {
                 LogPanelView(process: process, environment: environment)
             }
         }
-        .padding(.vertical, 1)
+        .padding(.vertical, 3)
     }
 
     private func crashLoopPrompt(process: PM2Process, environment: PM2Environment) -> String {
