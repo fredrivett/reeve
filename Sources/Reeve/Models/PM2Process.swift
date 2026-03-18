@@ -24,7 +24,7 @@ private enum StringOrInt: Decodable {
     }
 }
 
-public struct PM2Process: Identifiable {
+public struct PM2Process: Identifiable, Sendable {
     public let pid: Int
     public let name: String
     public let pmId: Int

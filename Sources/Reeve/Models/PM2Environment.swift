@@ -1,6 +1,6 @@
 import Foundation
 
-public struct PM2Environment: Identifiable, Hashable {
+public struct PM2Environment: Identifiable, Hashable, Sendable {
     public let path: String
     public let name: String
     public var isActive: Bool
