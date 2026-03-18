@@ -20,6 +20,7 @@ public class PM2Service: ObservableObject {
     private var timer: Timer?
     private var cachedResolution: PM2BinaryResolver.Resolution?
 
+    public let metricsHistory = MetricsHistory()
     public var isPolling = false
 
     public init() {
@@ -79,6 +80,16 @@ public class PM2Service: ObservableObject {
         }.value
 
         processesByEnvironment = fetchedResults
+
+        // Record metrics history
+        for env in activeEnvironments {
+            if let processes = fetchedResults[env.path] {
+                for process in processes where process.isOnline {
+                    metricsHistory.record(process: process, environmentPath: env.path)
+                }
+                metricsHistory.recordEnvironment(path: env.path, processes: processes)
+            }
+        }
 
         // Check for crash/restart notifications
         for env in activeEnvironments {

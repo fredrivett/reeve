@@ -84,12 +84,22 @@ struct ProcessRowView: View {
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
-                    Text(process.formattedCPU)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.secondary)
-                    Text(process.formattedMemory)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 2) {
+                        if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
+                            SparklineView(values: samples.map(\.cpu), color: .blue)
+                        }
+                        Text(process.formattedCPU)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(spacing: 2) {
+                        if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
+                            SparklineView(values: samples.map(\.memoryMB), color: .purple)
+                        }
+                        Text(process.formattedMemory)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
                     Text(process.formattedUptime)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.secondary)
