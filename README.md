@@ -20,15 +20,14 @@ A macOS menu bar app for monitoring and managing [PM2](https://pm2.keymetrics.io
 ## Getting started
 
 ```bash
-# Build
-swift build
-
-# Run
-swift run reeve
+# Build and run (recommended — creates a proper .app bundle for the menu bar)
+./run.sh
 
 # Test
 swift test
 ```
+
+> **Note:** `swift run reeve` builds a bare binary without an `.app` bundle, which prevents the menu bar icon from appearing on macOS. Use `./run.sh` instead, which wraps the binary in a minimal `.app` bundle so macOS can register the status item.
 
 The app runs as a menu bar accessory (no Dock icon). It polls PM2 for process status every 3 seconds by default.
 
