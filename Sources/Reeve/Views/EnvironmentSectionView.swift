@@ -3,6 +3,7 @@ import SwiftUI
 struct EnvironmentSectionView: View {
     let environment: PM2Environment
     let processes: [PM2Process]
+    var forceExpanded: Bool = false
     @EnvironmentObject var configService: ConfigService
     @EnvironmentObject var pm2Service: PM2Service
 
@@ -12,6 +13,7 @@ struct EnvironmentSectionView: View {
     private var isExpanded: Binding<Bool> {
         Binding(
             get: {
+                if forceExpanded { return true }
                 // Inactive environments default to collapsed
                 if !environment.isActive {
                     return configService.config.expandedInactiveEnvironments.contains(environment.path)
