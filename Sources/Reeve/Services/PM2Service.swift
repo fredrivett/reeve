@@ -3,14 +3,14 @@ import Combine
 import SwiftUI
 
 @MainActor
-class PM2Service: ObservableObject {
-    @Published var environments: [PM2Environment] = []
-    @Published var processesByEnvironment: [String: [PM2Process]] = [:]
-    @Published var error: String?
-    @Published var isLoading = false
-    @Published var hasCompletedFirstScan = false
+public class PM2Service: ObservableObject {
+    @Published public var environments: [PM2Environment] = []
+    @Published public var processesByEnvironment: [String: [PM2Process]] = [:]
+    @Published public var error: String?
+    @Published public var isLoading = false
+    @Published public var hasCompletedFirstScan = false
 
-    var totalOnlineCount: Int {
+    public var totalOnlineCount: Int {
         processesByEnvironment.values.flatMap { $0 }.filter(\.isOnline).count
     }
 
@@ -20,15 +20,15 @@ class PM2Service: ObservableObject {
     private var timer: Timer?
     private var cachedResolution: PM2BinaryResolver.Resolution?
 
-    var isPolling = false
+    public var isPolling = false
 
-    init() {
+    public init() {
         notificationService.requestPermission()
         // Start polling immediately on creation
         startPolling()
     }
 
-    func startPolling(interval: TimeInterval = 3.0) {
+    public func startPolling(interval: TimeInterval = 3.0) {
         guard !isPolling else { return }
         isPolling = true
         // Initial fetch
@@ -42,12 +42,12 @@ class PM2Service: ObservableObject {
         }
     }
 
-    func stopPolling() {
+    public func stopPolling() {
         timer?.invalidate()
         timer = nil
     }
 
-    func refresh() async {
+    public func refresh() async {
         let resolution: PM2BinaryResolver.Resolution
         do {
             resolution = try await resolver.resolve()
@@ -90,28 +90,28 @@ class PM2Service: ObservableObject {
         hasCompletedFirstScan = true
     }
 
-    func restart(process: PM2Process, environment: PM2Environment) async {
+    public func restart(process: PM2Process, environment: PM2Environment) async {
         await runControl(["restart", process.name], environment: environment)
     }
 
-    func stop(process: PM2Process, environment: PM2Environment) async {
+    public func stop(process: PM2Process, environment: PM2Environment) async {
         await runControl(["stop", process.name], environment: environment)
     }
 
-    func delete(process: PM2Process, environment: PM2Environment) async {
+    public func delete(process: PM2Process, environment: PM2Environment) async {
         await runControl(["delete", process.name], environment: environment)
     }
 
-    func killDaemon(environment: PM2Environment) async {
+    public func killDaemon(environment: PM2Environment) async {
         await runControl(["kill"], environment: environment)
     }
 
-    func clearEnvironment(_ environment: PM2Environment) {
+    public func clearEnvironment(_ environment: PM2Environment) {
         try? FileManager.default.removeItem(atPath: environment.path)
         environments.removeAll { $0.path == environment.path }
     }
 
-    func clearInactiveEnvironments() {
+    public func clearInactiveEnvironments() {
         let inactive = environments.filter { !$0.isActive }
         for env in inactive {
             try? FileManager.default.removeItem(atPath: env.path)
@@ -121,7 +121,7 @@ class PM2Service: ObservableObject {
 
     // MARK: - Log Streaming
 
-    func startLogStream(
+    public func startLogStream(
         process: PM2Process,
         environment: PM2Environment,
         onLine: @escaping @Sendable (String) -> Void
@@ -160,7 +160,7 @@ class PM2Service: ObservableObject {
         }
     }
 
-    func stopLogStream(_ process: Process?) {
+    public func stopLogStream(_ process: Process?) {
         guard let process, process.isRunning else { return }
         process.terminate()
     }

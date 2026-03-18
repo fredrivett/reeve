@@ -203,22 +203,7 @@ struct EnvironmentSectionView: View {
 
     private func formattedPortRange() -> String? {
         let ports = processes.compactMap(\.port).sorted()
-        guard !ports.isEmpty else { return nil }
-
-        let minPort = ports.first!
-        let maxPort = ports.last!
-
-        // If all ports fit within a 10-port range, show as e.g. "5500X"
-        let base = minPort / 10
-        if maxPort / 10 == base && maxPort - minPort < 10 {
-            return ":" + String(base) + "X"
-        }
-
-        // Otherwise show range
-        if minPort == maxPort {
-            return ":" + String(minPort)
-        }
-        return ":" + String(minPort) + "-" + String(maxPort)
+        return formatPortRange(from: ports)
     }
 
     private func headerCrashLoopPrompt() -> String {
@@ -244,4 +229,27 @@ struct EnvironmentSectionView: View {
         Please diagnose why these processes keep crashing and fix the issues.
         """
     }
+}
+
+/// Formats a sorted list of ports into a display string.
+/// Returns nil for empty lists, `:PORT` for single ports,
+/// `:BASEX` when all ports share the same tens digit within a 10-port span,
+/// or `:MIN-MAX` for wider ranges.
+public func formatPortRange(from ports: [Int]) -> String? {
+    guard !ports.isEmpty else { return nil }
+
+    let minPort = ports.first!
+    let maxPort = ports.last!
+
+    // If all ports fit within a 10-port range, show as e.g. "5500X"
+    let base = minPort / 10
+    if maxPort / 10 == base && maxPort - minPort < 10 {
+        return ":" + String(base) + "X"
+    }
+
+    // Otherwise show range
+    if minPort == maxPort {
+        return ":" + String(minPort)
+    }
+    return ":" + String(minPort) + "-" + String(maxPort)
 }
