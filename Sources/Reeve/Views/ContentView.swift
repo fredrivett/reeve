@@ -282,6 +282,7 @@ public struct ContentView: View {
         .padding(.bottom, 4)
         .frame(width: 460)
         .frame(maxHeight: 800)
+        .clampToScreen()
     }
 
     private func envNameMatches(_ env: PM2Environment) -> Bool {
