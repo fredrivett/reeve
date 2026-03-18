@@ -417,6 +417,77 @@ struct PM2ProcessComputedPropertyTests {
     }
 }
 
+// MARK: - Last Activity Formatting
+
+@Suite("Last Activity Formatting")
+struct LastActivityFormattingTests {
+
+    @Test("No log modified returns dash")
+    func noLogModified() throws {
+        var process = try decode("""
+        {
+            "pid": 1, "name": "x", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online" }
+        }
+        """)
+        #expect(process.lastLogModified == nil)
+        #expect(process.formattedLastActivity == "\u{2013}")
+    }
+
+    @Test("Last activity in seconds")
+    func lastActivitySeconds() throws {
+        var process = try decode("""
+        {
+            "pid": 1, "name": "x", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online" }
+        }
+        """)
+        process.lastLogModified = Date().addingTimeInterval(-15)
+        #expect(process.formattedLastActivity == "15s")
+    }
+
+    @Test("Last activity in minutes")
+    func lastActivityMinutes() throws {
+        var process = try decode("""
+        {
+            "pid": 1, "name": "x", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online" }
+        }
+        """)
+        process.lastLogModified = Date().addingTimeInterval(-300)
+        #expect(process.formattedLastActivity == "5m")
+    }
+
+    @Test("Last activity in hours")
+    func lastActivityHours() throws {
+        var process = try decode("""
+        {
+            "pid": 1, "name": "x", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online" }
+        }
+        """)
+        process.lastLogModified = Date().addingTimeInterval(-7200)
+        #expect(process.formattedLastActivity == "2h")
+    }
+
+    @Test("Last activity in days")
+    func lastActivityDays() throws {
+        var process = try decode("""
+        {
+            "pid": 1, "name": "x", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online" }
+        }
+        """)
+        process.lastLogModified = Date().addingTimeInterval(-172800)
+        #expect(process.formattedLastActivity == "2d")
+    }
+}
+
 // MARK: - Crash Looping
 
 @Suite("Crash Looping Detection")

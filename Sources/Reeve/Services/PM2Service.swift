@@ -185,7 +185,21 @@ public class PM2Service: ObservableObject {
     ) -> [PM2Process] {
         do {
             let data = try runPM2Sync(["jlist"], environment: environment, using: resolution)
-            let processes = try JSONDecoder().decode([PM2Process].self, from: data)
+            var processes = try JSONDecoder().decode([PM2Process].self, from: data)
+            // Stat log files to determine last activity time
+            let fm = FileManager.default
+            for i in processes.indices {
+                var newest: Date?
+                for logPath in [processes[i].outLogPath, processes[i].errLogPath] where !logPath.isEmpty {
+                    if let attrs = try? fm.attributesOfItem(atPath: logPath),
+                       let modified = attrs[.modificationDate] as? Date {
+                        if newest == nil || modified > newest! {
+                            newest = modified
+                        }
+                    }
+                }
+                processes[i].lastLogModified = newest
+            }
             return processes
         } catch {
             // Silently return empty for environments with no processes or errors
