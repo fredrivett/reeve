@@ -51,22 +51,7 @@ jobs:
 
           mkdir -p Casks
 
-          cat > Casks/reeve.rb << 'CASK'
-cask "reeve" do
-  version "VERSION_PLACEHOLDER"
-  sha256 "SHA256_PLACEHOLDER"
-
-  url "https://github.com/fredrivett/reeve/releases/download/v#{version}/Reeve-#{version}.dmg"
-  name "Reeve"
-  desc "macOS menu bar app for monitoring PM2 processes"
-  homepage "https://github.com/fredrivett/reeve"
-
-  app "Reeve.app"
-end
-CASK
-
-          sed -i '' "s/VERSION_PLACEHOLDER/${VERSION}/" Casks/reeve.rb
-          sed -i '' "s/SHA256_PLACEHOLDER/${SHA256}/" Casks/reeve.rb
+          printf 'cask "reeve" do\n  version "%s"\n  sha256 "%s"\n\n  url "https://github.com/fredrivett/reeve/releases/download/v#{version}/Reeve-#{version}.dmg"\n  name "Reeve"\n  desc "macOS menu bar app for monitoring PM2 processes"\n  homepage "https://github.com/fredrivett/reeve"\n\n  app "Reeve.app"\nend\n' "$VERSION" "$SHA256" > Casks/reeve.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
