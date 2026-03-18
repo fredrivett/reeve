@@ -14,6 +14,7 @@ struct ProcessRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 StatusBadgeView(status: process.status)
+                    .frame(width: Layout.indicatorColumnWidth)
 
                 Text(process.name)
                     .font(.system(size: 12, weight: .medium))
@@ -97,21 +98,15 @@ struct ProcessRowView: View {
                         if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.cpu), color: .blue)
                         }
-                        Text(process.formattedCPU)
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
+                        PaddedStatText(value: process.cpuPercent, suffix: "%", totalDigits: 3)
                     }
                     HStack(spacing: 2) {
                         if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.memoryMB), color: .purple)
                         }
-                        Text(process.formattedMemory)
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
+                        PaddedStatText(value: process.memoryMB, suffix: "MB", totalDigits: 3)
                     }
-                    Text(process.formattedUptime)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.secondary)
+                    PaddedUptimeText(uptime: process.formattedUptime, totalDigits: 2)
                 }
 
                 // Controls
@@ -154,7 +149,7 @@ struct ProcessRowView: View {
                 LogPanelView(process: process, environment: environment)
             }
         }
-        .padding(.vertical, 1)
+        .padding(.vertical, 3)
     }
 
     private func crashLoopPrompt(process: PM2Process, environment: PM2Environment) -> String {

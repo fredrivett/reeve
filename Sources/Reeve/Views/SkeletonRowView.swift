@@ -10,6 +10,7 @@ struct SkeletonRowView: View {
             Image(systemName: "chevron.right")
                 .font(.system(size: 10))
                 .foregroundColor(.primary.opacity(0.15))
+                .frame(width: Layout.indicatorColumnWidth)
 
             // Name
             RoundedRectangle(cornerRadius: 3)
@@ -48,7 +49,8 @@ struct SkeletonRowView: View {
                 .fill(Color.primary.opacity(0.06))
                 .frame(width: 14, height: 14)
         }
-        .padding(.horizontal, 12)
+        .padding(.leading, Layout.sectionLeadingPadding)
+        .padding(.trailing, Layout.sectionTrailingPadding)
         .padding(.vertical, 9)
         .opacity(shimmer ? 0.6 : 1.0)
         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: shimmer)

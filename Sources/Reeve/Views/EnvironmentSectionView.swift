@@ -66,8 +66,8 @@ struct EnvironmentSectionView: View {
                 .padding(.vertical, 4)
             }
         } label: {
-            HStack(alignment: .center) {
-                HStack(alignment: .center) {
+            HStack(alignment: .center, spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
                     Text(environment.name)
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
@@ -151,9 +151,7 @@ struct EnvironmentSectionView: View {
                         if let samples = pm2Service.metricsHistory.history["env:\(environment.path)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.cpu), color: .blue)
                         }
-                        Text(String(format: "%.0f%%", totalCPU))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
+                        PaddedStatText(value: totalCPU, suffix: "%", totalDigits: 3)
                     }
 
                     let totalMemMB = processes.filter(\.isOnline).reduce(0.0) { $0 + $1.memoryMB }
@@ -161,21 +159,19 @@ struct EnvironmentSectionView: View {
                         if let samples = pm2Service.metricsHistory.history["env:\(environment.path)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.memoryMB), color: .purple)
                         }
-                        Text(totalMemMB >= 1024 ? String(format: "%.1fGB", totalMemMB / 1024.0) : String(format: "%.0fMB", totalMemMB))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
+                        PaddedStatText(value: totalMemMB, suffix: "MB", totalDigits: 3)
                     }
 
                     if let oldest = processes.map(\.createdAt).filter({ $0 > 0 }).min() {
-                        Text(formattedElapsed(since: oldest))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
+                        PaddedUptimeText(uptime: formattedElapsed(since: oldest), totalDigits: 2)
+                            .padding(.trailing, 1)
                     }
 
                     let onlineCount = processes.filter(\.isOnline).count
                     Text("\(onlineCount)/\(processes.count)")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
+                        .padding(.trailing, 1)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { isExpanded.wrappedValue.toggle() }
@@ -205,8 +201,9 @@ struct EnvironmentSectionView: View {
                     }
                 }
             }
-            .padding(.trailing, -4)
+            .padding(.trailing, -1)
         }
+        .disclosureGroupStyle(AlignedDisclosureGroupStyle())
     }
 
     private func formattedElapsed(since timestamp: Int64) -> String {

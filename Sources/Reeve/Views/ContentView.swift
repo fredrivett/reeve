@@ -167,6 +167,7 @@ public struct ContentView: View {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10))
                             .foregroundColor(.primary.opacity(0.15))
+                            .frame(width: Layout.indicatorColumnWidth)
                         RoundedRectangle(cornerRadius: 3)
                             .fill(Color.primary.opacity(0.08))
                             .frame(width: 42, height: 10)
@@ -175,7 +176,8 @@ public struct ContentView: View {
                             .frame(width: 18, height: 10)
                         Spacer()
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.leading, Layout.sectionLeadingPadding)
+                    .padding(.trailing, Layout.sectionTrailingPadding)
                     .padding(.vertical, 9)
                     .opacity(shimmerInactive ? 0.6 : 1.0)
                     .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: shimmerInactive)
@@ -215,8 +217,9 @@ public struct ContentView: View {
                                 processes: envNameMatches(env) ? (pm2Service.processesByEnvironment[env.path] ?? []) : filteredProcesses(for: env.path),
                                 forceExpanded: !filterText.isEmpty
                             )
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
+                            .padding(.leading, Layout.sectionLeadingPadding)
+                            .padding(.trailing, Layout.sectionTrailingPadding)
+                            .padding(.vertical, 8)
 
                             if env.id != visibleActiveEnvs.last?.id || (filterText.isEmpty && !inactiveEnvs.isEmpty) {
                                 Divider().padding(.horizontal, 8)
@@ -232,7 +235,7 @@ public struct ContentView: View {
                                             processes: []
                                         )
                                         .padding(.leading, 16)
-                                        .padding(.trailing, 12)
+                                        .padding(.trailing, Layout.sectionTrailingPadding)
                                         .padding(.vertical, 2)
                                     }
                                 }
@@ -266,15 +269,18 @@ public struct ContentView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
+                            .disclosureGroupStyle(AlignedDisclosureGroupStyle())
+                            .padding(.leading, Layout.sectionLeadingPadding)
+                            .padding(.trailing, Layout.sectionTrailingPadding)
+                            .padding(.vertical, 8)
                         }
                     }
                 }
             }
 
         }
-        .frame(width: 420)
+        .padding(.bottom, 4)
+        .frame(width: 460)
         .frame(maxHeight: 800)
     }
 
