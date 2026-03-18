@@ -4,50 +4,39 @@ import SwiftUI
 /// Ensures the hosting window stays fully visible on screen.
 /// Works around a macOS bug where MenuBarExtra windows drift off-screen
 /// when the menu bar auto-hides in fullscreen mode.
-struct WindowClampModifier: ViewModifier {
-    @State private var moveObserver: NSObjectProtocol?
-    @State private var screenObserver: NSObjectProtocol?
-    @State private var isAdjusting = false
+private final class WindowClampView: NSView {
+    private var moveObserver: NSObjectProtocol?
+    private var screenObserver: NSObjectProtocol?
+    private var isAdjusting = false
 
-    func body(content: Content) -> some View {
-        content
-            .background(WindowAccessor { window in
-                guard let window = window else { return }
-                clampToScreen(window)
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        removeObservers()
+        guard let window = window else { return }
 
-                moveObserver = NotificationCenter.default.addObserver(
-                    forName: NSWindow.didMoveNotification,
-                    object: window,
-                    queue: .main
-                ) { notification in
-                    guard !isAdjusting,
-                          let movedWindow = notification.object as? NSWindow else { return }
-                    // Debounce to let menu bar hide animation finish
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isAdjusting = true
-                        clampToScreen(movedWindow)
-                        isAdjusting = false
-                    }
-                }
+        clampToScreen(window)
 
-                screenObserver = NotificationCenter.default.addObserver(
-                    forName: NSApplication.didChangeScreenParametersNotification,
-                    object: nil,
-                    queue: .main
-                ) { _ in
-                    isAdjusting = true
-                    clampToScreen(window)
-                    isAdjusting = false
-                }
-            })
-            .onDisappear {
-                if let moveObserver = moveObserver {
-                    NotificationCenter.default.removeObserver(moveObserver)
-                }
-                if let screenObserver = screenObserver {
-                    NotificationCenter.default.removeObserver(screenObserver)
-                }
-            }
+        moveObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification,
+            object: window,
+            queue: .main
+        ) { [weak self, weak window] _ in
+            guard let self = self, let window = window, !self.isAdjusting else { return }
+            self.isAdjusting = true
+            self.clampToScreen(window)
+            self.isAdjusting = false
+        }
+
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self, weak window] _ in
+            guard let self = self, let window = window else { return }
+            self.isAdjusting = true
+            self.clampToScreen(window)
+            self.isAdjusting = false
+        }
     }
 
     private func clampToScreen(_ window: NSWindow) {
@@ -55,15 +44,12 @@ struct WindowClampModifier: ViewModifier {
         let visibleFrame = screen.visibleFrame
         var frame = window.frame
 
-        // Clamp vertically: ensure the window doesn't go above the visible area
         if frame.maxY > visibleFrame.maxY {
             frame.origin.y = visibleFrame.maxY - frame.height
         }
         if frame.origin.y < visibleFrame.origin.y {
             frame.origin.y = visibleFrame.origin.y
         }
-
-        // Clamp horizontally
         if frame.maxX > visibleFrame.maxX {
             frame.origin.x = visibleFrame.maxX - frame.width
         }
@@ -75,17 +61,27 @@ struct WindowClampModifier: ViewModifier {
             window.setFrame(frame, display: false)
         }
     }
+
+    private func removeObservers() {
+        if let moveObserver = moveObserver {
+            NotificationCenter.default.removeObserver(moveObserver)
+            self.moveObserver = nil
+        }
+        if let screenObserver = screenObserver {
+            NotificationCenter.default.removeObserver(screenObserver)
+            self.screenObserver = nil
+        }
+    }
+
+    deinit {
+        removeObservers()
+    }
 }
 
-/// Helper to get the hosting NSWindow from a SwiftUI view.
-private struct WindowAccessor: NSViewRepresentable {
-    let onWindow: (NSWindow?) -> Void
-
+private struct WindowClampRepresentable: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            onWindow(view.window)
-        }
+        let view = WindowClampView()
+        view.setFrameSize(.zero)
         return view
     }
 
@@ -94,6 +90,6 @@ private struct WindowAccessor: NSViewRepresentable {
 
 extension View {
     func clampToScreen() -> some View {
-        modifier(WindowClampModifier())
+        background(WindowClampRepresentable())
     }
 }
