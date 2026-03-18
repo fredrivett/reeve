@@ -3,6 +3,8 @@ import SwiftUI
 public struct ContentView: View {
     @EnvironmentObject var pm2Service: PM2Service
     @EnvironmentObject var configService: ConfigService
+    @State private var filterText = ""
+    @FocusState private var filterFocused: Bool
     @State private var inactiveExpanded = false
     @State private var shimmerInactive = false
 
@@ -15,6 +17,45 @@ public struct ContentView: View {
                 Text("reeve")
                     .font(.system(size: 14, weight: .bold))
                 Spacer()
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                    ZStack(alignment: .leading) {
+                        if filterText.isEmpty {
+                            Text("Filter...")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary.opacity(0.6))
+                                .allowsHitTesting(false)
+                        }
+                        TextField("", text: $filterText)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 11))
+                            .focused($filterFocused)
+                            .onExitCommand { filterFocused = false }
+                    }
+                    .frame(width: 80)
+                    .padding(.trailing, 18)
+                }
+                .padding(.leading, 6)
+                .padding(.trailing, 2)
+                .frame(height: 22)
+                .background(Color.primary.opacity(0.06))
+                .cornerRadius(5)
+                .overlay(alignment: .trailing) {
+                    if !filterText.isEmpty {
+                        Button {
+                            filterText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                        .padding(.trailing, 4)
+                    }
+                }
+
                 let allCollapsed = pm2Service.environments.filter(\.isActive).allSatisfy { configService.isCollapsed($0.path) } && !inactiveExpanded
 
                 Button {
@@ -136,21 +177,33 @@ public struct ContentView: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         let activeEnvs = pm2Service.environments.filter(\.isActive)
                         let inactiveEnvs = pm2Service.environments.filter { !$0.isActive }
+                        let visibleActiveEnvs = filterText.isEmpty ? activeEnvs : activeEnvs.filter { env in
+                            envNameMatches(env) || !filteredProcesses(for: env.path).isEmpty
+                        }
 
-                        ForEach(activeEnvs) { env in
+                        if !filterText.isEmpty && visibleActiveEnvs.isEmpty {
+                            Text("No matching processes")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                        }
+
+                        ForEach(visibleActiveEnvs) { env in
                             EnvironmentSectionView(
                                 environment: env,
-                                processes: pm2Service.processesByEnvironment[env.path] ?? []
+                                processes: envNameMatches(env) ? (pm2Service.processesByEnvironment[env.path] ?? []) : filteredProcesses(for: env.path),
+                                forceExpanded: !filterText.isEmpty
                             )
                             .padding(.horizontal, 12)
                             .padding(.vertical, 4)
 
-                            if env.id != activeEnvs.last?.id || !inactiveEnvs.isEmpty {
+                            if env.id != visibleActiveEnvs.last?.id || (filterText.isEmpty && !inactiveEnvs.isEmpty) {
                                 Divider().padding(.horizontal, 8)
                             }
                         }
 
-                        if !inactiveEnvs.isEmpty {
+                        if !inactiveEnvs.isEmpty && filterText.isEmpty {
                             DisclosureGroup(isExpanded: $inactiveExpanded) {
                                 VStack(alignment: .leading, spacing: 0) {
                                     ForEach(inactiveEnvs) { env in
@@ -203,5 +256,20 @@ public struct ContentView: View {
         }
         .frame(width: 420)
         .frame(maxHeight: 800)
+    }
+
+    private func envNameMatches(_ env: PM2Environment) -> Bool {
+        guard !filterText.isEmpty else { return false }
+        return env.name.lowercased().contains(filterText.lowercased())
+    }
+
+    private func filteredProcesses(for environmentPath: String) -> [PM2Process] {
+        let processes = pm2Service.processesByEnvironment[environmentPath] ?? []
+        guard !filterText.isEmpty else { return processes }
+        let query = filterText.lowercased()
+        return processes.filter { process in
+            process.name.lowercased().contains(query) ||
+            (process.port.map { String($0).contains(query) } ?? false)
+        }
     }
 }
