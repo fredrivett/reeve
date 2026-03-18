@@ -14,6 +14,7 @@ struct ProcessRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 StatusBadgeView(status: process.status)
+                    .frame(width: Layout.indicatorColumnWidth)
 
                 Text(process.name)
                     .font(.system(size: 12, weight: .medium))

@@ -197,6 +197,7 @@ struct EnvironmentSectionView: View {
             }
             .padding(.trailing, -4)
         }
+        .disclosureGroupStyle(AlignedDisclosureGroupStyle())
     }
 
     private func formattedElapsed(since timestamp: Int64) -> String {
