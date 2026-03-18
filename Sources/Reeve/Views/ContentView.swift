@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var pm2Service: PM2Service
     @EnvironmentObject var configService: ConfigService
     @State private var inactiveExpanded = false
+    @State private var shimmerInactive = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -91,7 +92,33 @@ struct ContentView: View {
             }
 
             // Process list
-            if pm2Service.environments.isEmpty && pm2Service.error == nil {
+            if !pm2Service.hasCompletedFirstScan {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    let nameWidths: [CGFloat] = [90, 120, 70]
+                    ForEach(0..<3, id: \.self) { index in
+                        SkeletonRowView(nameWidth: nameWidths[index])
+                        Divider().padding(.horizontal, 8)
+                    }
+                    // Inactive group skeleton
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10))
+                            .foregroundColor(.primary.opacity(0.15))
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.primary.opacity(0.08))
+                            .frame(width: 42, height: 10)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.primary.opacity(0.06))
+                            .frame(width: 18, height: 10)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .opacity(shimmerInactive ? 0.6 : 1.0)
+                    .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: shimmerInactive)
+                    .onAppear { shimmerInactive = true }
+                }
+            } else if pm2Service.environments.isEmpty && pm2Service.error == nil {
                 VStack(spacing: 8) {
                     Text("No PM2 environments found")
                         .font(.system(size: 12))
@@ -100,8 +127,8 @@ struct ContentView: View {
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
