@@ -20,7 +20,13 @@ struct ReeveApp: App {
                 }
         } label: {
             let count = pm2Service.totalOnlineCount
-            Label(count > 0 ? "\(count)" : "–", systemImage: "cpu")
+            HStack(spacing: 4) {
+                Image(systemName: "person.and.background.striped.horizontal")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.primary, .primary)
+                    .font(.system(size: 22))
+                Text(count > 0 ? "\(count)" : "–")
+            }
         }
         .menuBarExtraStyle(.window)
     }
