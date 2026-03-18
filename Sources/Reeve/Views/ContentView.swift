@@ -12,6 +12,33 @@ struct ContentView: View {
                 Text("reeve")
                     .font(.system(size: 14, weight: .bold))
                 Spacer()
+                let allCollapsed = pm2Service.environments.filter(\.isActive).allSatisfy { configService.isCollapsed($0.path) } && !inactiveExpanded
+
+                Button {
+                    let activeEnvs = pm2Service.environments.filter(\.isActive)
+                    if allCollapsed {
+                        for env in activeEnvs {
+                            configService.config.collapsedEnvironments.remove(env.path)
+                        }
+                        inactiveExpanded = true
+                    } else {
+                        for env in activeEnvs {
+                            configService.config.collapsedEnvironments.insert(env.path)
+                        }
+                        configService.config.expandedInactiveEnvironments.removeAll()
+                        inactiveExpanded = false
+                    }
+                    configService.save()
+                } label: {
+                    Image(systemName: allCollapsed ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.borderless)
+                .help(allCollapsed ? "Expand all" : "Collapse all")
+                .onHover { hovering in
+                    if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
+
                 Button {
                     Task { await pm2Service.refresh() }
                 } label: {
