@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Build release DMG
+        run: |
+          chmod +x scripts/build-release.sh
+          scripts/build-release.sh
+
+      - name: Get version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          SHA=$(shasum -a 256 .build/Reeve-${{ steps.version.outputs.version }}.dmg | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .build/Reeve-${{ steps.version.outputs.version }}.dmg
+          generate_release_notes: true
+
+      - name: Update Homebrew tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256="${{ steps.sha.outputs.sha256 }}"
+
+          git clone https://x-access-token:${TAP_TOKEN}@github.com/fredrivett/homebrew-tap.git tap-repo
+          cd tap-repo
+
+          mkdir -p Casks
+
+          cat > Casks/reeve.rb << 'CASK'
+cask "reeve" do
+  version "VERSION_PLACEHOLDER"
+  sha256 "SHA256_PLACEHOLDER"
+
+  url "https://github.com/fredrivett/reeve/releases/download/v#{version}/Reeve-#{version}.dmg"
+  name "Reeve"
+  desc "macOS menu bar app for monitoring PM2 processes"
+  homepage "https://github.com/fredrivett/reeve"
+
+  app "Reeve.app"
+end
+CASK
+
+          sed -i '' "s/VERSION_PLACEHOLDER/${VERSION}/" Casks/reeve.rb
+          sed -i '' "s/SHA256_PLACEHOLDER/${SHA256}/" Casks/reeve.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/reeve.rb
+          git commit -m "Update reeve to ${VERSION}"
+          git push
