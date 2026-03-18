@@ -8,6 +8,7 @@ class PM2Service: ObservableObject {
     @Published var processesByEnvironment: [String: [PM2Process]] = [:]
     @Published var error: String?
     @Published var isLoading = false
+    @Published var hasCompletedFirstScan = false
 
     var totalOnlineCount: Int {
         processesByEnvironment.values.flatMap { $0 }.filter(\.isOnline).count
@@ -85,6 +86,8 @@ class PM2Service: ObservableObject {
                 notificationService.checkForChanges(environment: env, processes: processes)
             }
         }
+
+        hasCompletedFirstScan = true
     }
 
     func restart(process: PM2Process, environment: PM2Environment) async {
@@ -130,7 +133,7 @@ class PM2Service: ObservableObject {
         let errPipe = Pipe()
 
         proc.executableURL = URL(fileURLWithPath: resolution.binary)
-        proc.arguments = ["logs", process.name, "--lines", "50"]
+        proc.arguments = ["logs", process.name, "--lines", "50", "--timestamp"]
         proc.environment = PM2Service.buildEnvDict(resolution: resolution, pm2Home: environment.path)
         proc.standardOutput = pipe
         proc.standardError = errPipe
