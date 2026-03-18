@@ -10,6 +10,13 @@ struct ProcessRowView: View {
     @State private var showCrashPopover = false
     @State private var copied = false
 
+    private static let tooltipFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .medium
+        return f
+    }()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
@@ -95,7 +102,10 @@ struct ProcessRowView: View {
                         }
                         PaddedStatText(value: process.memoryMB, suffix: "MB", totalDigits: 3)
                     }
+                    PaddedUptimeText(uptime: process.formattedLastActivity, totalDigits: 2)
+                        .hoverTooltip(process.lastLogModified.map { "Updated: \(Self.tooltipFormatter.string(from: $0))" } ?? "Updated: –")
                     PaddedUptimeText(uptime: process.formattedUptime, totalDigits: 2)
+                        .hoverTooltip(process.uptime > 0 ? "Created: \(Self.tooltipFormatter.string(from: Date(timeIntervalSince1970: Double(process.uptime) / 1000)))" : "Created: –")
                 }
 
                 // Controls

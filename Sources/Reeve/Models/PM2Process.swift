@@ -42,6 +42,9 @@ public struct PM2Process: Identifiable, Sendable {
     public let errLogPath: String
     public let port: Int?
 
+    /// Most recent modification time of the process's log files (set after decoding).
+    public var lastLogModified: Date?
+
     public var id: String { "\(pmId)" }
 
     public var isOnline: Bool { status == "online" }
@@ -69,6 +72,19 @@ public struct PM2Process: Identifiable, Sendable {
 
     public var formattedCPU: String {
         String(format: "%.0f%%", cpuPercent)
+    }
+
+    public var formattedLastActivity: String {
+        guard let date = lastLogModified else { return "–" }
+        let elapsed = max(0, Int64(Date().timeIntervalSince1970 - date.timeIntervalSince1970))
+        let minutes = elapsed / 60
+        let hours = minutes / 60
+        let days = hours / 24
+
+        if days > 0 { return "\(days)d" }
+        if hours > 0 { return "\(hours)h" }
+        if minutes > 0 { return "\(minutes)m" }
+        return "\(elapsed)s"
     }
 
     public var formattedUptime: String {

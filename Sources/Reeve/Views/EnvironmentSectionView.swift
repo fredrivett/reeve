@@ -10,6 +10,13 @@ struct EnvironmentSectionView: View {
     @State private var showCrashPopover = false
     @State private var copied = false
 
+    private static let tooltipFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .medium
+        return f
+    }()
+
     private var isExpanded: Binding<Bool> {
         Binding(
             get: {
@@ -150,8 +157,15 @@ struct EnvironmentSectionView: View {
                         PaddedStatText(value: totalMemMB, suffix: "MB", totalDigits: 3)
                     }
 
+                    if let newestLog = processes.compactMap(\.lastLogModified).max() {
+                        PaddedUptimeText(uptime: formattedElapsedSinceDate(newestLog), totalDigits: 2)
+                            .hoverTooltip("Updated: \(Self.tooltipFormatter.string(from: newestLog))")
+                            .padding(.trailing, 1)
+                    }
+
                     if let oldest = processes.map(\.createdAt).filter({ $0 > 0 }).min() {
                         PaddedUptimeText(uptime: formattedElapsed(since: oldest), totalDigits: 2)
+                            .hoverTooltip("Created: \(Self.tooltipFormatter.string(from: Date(timeIntervalSince1970: Double(oldest) / 1000)))")
                             .padding(.trailing, 1)
                     }
 
@@ -192,6 +206,18 @@ struct EnvironmentSectionView: View {
             .padding(.trailing, -1)
         }
         .disclosureGroupStyle(AlignedDisclosureGroupStyle())
+    }
+
+    private func formattedElapsedSinceDate(_ date: Date) -> String {
+        let elapsed = max(0, Int64(Date().timeIntervalSince1970 - date.timeIntervalSince1970))
+        let minutes = elapsed / 60
+        let hours = minutes / 60
+        let days = hours / 24
+
+        if days > 0 { return "\(days)d" }
+        if hours > 0 { return "\(hours)h" }
+        if minutes > 0 { return "\(minutes)m" }
+        return "\(elapsed)s"
     }
 
     private func formattedElapsed(since timestamp: Int64) -> String {
