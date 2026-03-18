@@ -129,9 +129,19 @@ struct EnvironmentSectionView: View {
                     }
 
                     if let portRange = formattedPortRange() {
+                        let minPort = processes.compactMap(\.port).min()
                         Text(portRange)
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(minPort != nil ? Color.accentColor : .secondary)
+                            .onHover { hovering in
+                                if hovering && minPort != nil { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                            }
+                            .onTapGesture {
+                                if let port = minPort, let url = URL(string: "http://localhost:\(port)") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }
+                            .help(minPort.map { "Open http://localhost:\(String($0))" } ?? "")
                     }
 
                     let totalCPU = processes.filter(\.isOnline).reduce(0.0) { $0 + $1.cpuPercent }
