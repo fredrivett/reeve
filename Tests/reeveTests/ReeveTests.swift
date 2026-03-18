@@ -755,3 +755,86 @@ struct PM2EnvironmentTests {
         #expect(env.name == "randomdir")
     }
 }
+
+// MARK: - MetricsHistory
+
+@Suite("MetricsHistory")
+struct MetricsHistoryTests {
+
+    @Test("Record stores samples")
+    @MainActor func recordStoresSamples() throws {
+        let json = """
+        {
+            "pid": 1234, "name": "web", "pm_id": 0,
+            "monit": { "memory": 52428800, "cpu": 12.5 },
+            "pm2_env": {
+                "status": "online", "namespace": "default",
+                "pm_exec_path": "/app/index.js", "pm_cwd": "/app",
+                "exec_mode": "fork_mode", "pm_uptime": \(Int64(Date().timeIntervalSince1970 * 1000) - 60000),
+                "restart_time": 0, "created_at": \(Int64(Date().timeIntervalSince1970 * 1000) - 120000),
+                "pm_out_log_path": "/tmp/out.log", "pm_err_log_path": "/tmp/err.log"
+            }
+        }
+        """
+        let process = try decode(json)
+        let history = MetricsHistory()
+
+        history.record(process: process, environmentPath: "/Users/test/.pm2")
+        #expect(history.history["/Users/test/.pm2:0"]?.count == 1)
+        #expect(history.history["/Users/test/.pm2:0"]?.first?.cpu == 12.5)
+    }
+
+    @Test("Samples are capped at maxSamples (20)")
+    @MainActor func samplesCapped() throws {
+        let json = """
+        {
+            "pid": 1234, "name": "web", "pm_id": 5,
+            "monit": { "memory": 52428800, "cpu": 1.0 },
+            "pm2_env": {
+                "status": "online", "namespace": "default",
+                "pm_exec_path": "/app/index.js", "pm_cwd": "/app",
+                "exec_mode": "fork_mode", "pm_uptime": \(Int64(Date().timeIntervalSince1970 * 1000) - 60000),
+                "restart_time": 0, "created_at": \(Int64(Date().timeIntervalSince1970 * 1000) - 120000),
+                "pm_out_log_path": "/tmp/out.log", "pm_err_log_path": "/tmp/err.log"
+            }
+        }
+        """
+        let process = try decode(json)
+        let history = MetricsHistory()
+
+        for _ in 0..<25 {
+            history.record(process: process, environmentPath: "/home/.pm2")
+        }
+        #expect(history.history["/home/.pm2:5"]?.count == 20)
+    }
+}
+
+// MARK: - Normalization
+
+@Suite("MetricsHistory.normalize")
+struct NormalizationTests {
+
+    @Test("Normalizes values to 0...1")
+    func normalizesRange() {
+        let result = MetricsHistory.normalize([0, 5, 10])
+        #expect(result == [0.0, 0.5, 1.0])
+    }
+
+    @Test("Single value returns 0.5")
+    func singleValue() {
+        let result = MetricsHistory.normalize([42])
+        #expect(result == [0.5])
+    }
+
+    @Test("Empty array returns empty")
+    func emptyArray() {
+        let result = MetricsHistory.normalize([])
+        #expect(result.isEmpty)
+    }
+
+    @Test("Equal values return 0.5 for all")
+    func equalValues() {
+        let result = MetricsHistory.normalize([7, 7, 7])
+        #expect(result == [0.5, 0.5, 0.5])
+    }
+}
