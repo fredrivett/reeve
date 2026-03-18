@@ -114,11 +114,16 @@ public struct ContentView: View {
                 }
 
                 Menu {
-                    Toggle("Show Repo Info", isOn: Binding(
-                        get: { configService.config.showRepoName },
-                        set: { configService.config.showRepoName = $0; configService.save() }
-                    ))
                     Toggle("Launch at Login", isOn: launchAtLoginBinding)
+                    if #available(macOS 14.0, *) {
+                        SettingsLink {
+                            Text("Settings...")
+                        }
+                    } else {
+                        Button("Settings...") {
+                            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                        }
+                    }
                     Divider()
                     Button("Quit") {
                         NSApplication.shared.terminate(nil)

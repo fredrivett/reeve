@@ -5,6 +5,8 @@ public struct AppConfig: Codable {
     public var collapsedEnvironments: Set<String> = []
     public var hiddenEnvironments: Set<String> = []
     public var showRepoName: Bool = true
+    public var stripBranchPrefix: Bool = true
+    public var stripTicketPrefix: Bool = true
 
     // Not persisted — inactive environments always start collapsed
     public var expandedInactiveEnvironments: Set<String> = []
@@ -12,7 +14,7 @@ public struct AppConfig: Codable {
     public init() {}
 
     enum CodingKeys: String, CodingKey {
-        case pollIntervalSeconds, collapsedEnvironments, hiddenEnvironments, showRepoName
+        case pollIntervalSeconds, collapsedEnvironments, hiddenEnvironments, showRepoName, stripBranchPrefix, stripTicketPrefix
     }
 
     public init(from decoder: Decoder) throws {
@@ -21,5 +23,7 @@ public struct AppConfig: Codable {
         collapsedEnvironments = try container.decode(Set<String>.self, forKey: .collapsedEnvironments)
         hiddenEnvironments = try container.decode(Set<String>.self, forKey: .hiddenEnvironments)
         showRepoName = try container.decodeIfPresent(Bool.self, forKey: .showRepoName) ?? true
+        stripBranchPrefix = try container.decodeIfPresent(Bool.self, forKey: .stripBranchPrefix) ?? true
+        stripTicketPrefix = try container.decodeIfPresent(Bool.self, forKey: .stripTicketPrefix) ?? true
     }
 }

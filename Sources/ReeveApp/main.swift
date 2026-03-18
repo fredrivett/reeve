@@ -30,6 +30,11 @@ struct ReeveApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView()
+                .environmentObject(configService)
+        }
     }
 }
 

@@ -3,6 +3,24 @@ import Foundation
 public struct GitInfo: Hashable, Sendable {
     public let repoName: String
     public let branch: String
+
+    /// Format the branch name for display, applying optional stripping rules.
+    public func displayBranch(stripPrefix: Bool, stripTicket: Bool) -> String {
+        var result = branch
+        // Strip everything before and including the last slash: "fredrivett/my-branch" → "my-branch"
+        if stripPrefix, let slashIndex = result.lastIndex(of: "/") {
+            result = String(result[result.index(after: slashIndex)...])
+        }
+        // Strip ticket prefix like "eng-1234-": "eng-3338-next-button-fix" → "next-button-fix"
+        if stripTicket {
+            result = result.replacingOccurrences(
+                of: #"^.*?eng-\d+-"#,
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+        }
+        return result
+    }
 }
 
 public struct PM2Environment: Identifiable, Hashable, Sendable {

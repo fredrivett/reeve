@@ -876,6 +876,49 @@ struct GitInfoTests {
         #expect(gitInfo == nil)
     }
 
+    @Test("displayBranch with no stripping")
+    func displayBranchNoStripping() {
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
+        #expect(gi.displayBranch(stripPrefix: false, stripTicket: false) == "fredrivett/eng-3338-next-button-fix")
+    }
+
+    @Test("displayBranch strips prefix only")
+    func displayBranchStripPrefix() {
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: false) == "eng-3338-next-button-fix")
+    }
+
+    @Test("displayBranch strips ticket only")
+    func displayBranchStripTicket() {
+        // The .*? before eng- consumes "fredrivett/" as part of the match
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
+        #expect(gi.displayBranch(stripPrefix: false, stripTicket: true) == "next-button-fix")
+    }
+
+    @Test("displayBranch strips both")
+    func displayBranchStripBoth() {
+        let gi = GitInfo(repoName: "repo", branch: "fredrivett/eng-3338-next-button-fix")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "next-button-fix")
+    }
+
+    @Test("displayBranch no-op when no prefix or ticket")
+    func displayBranchNoMatch() {
+        let gi = GitInfo(repoName: "repo", branch: "main")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "main")
+    }
+
+    @Test("displayBranch strips ticket case-insensitively")
+    func displayBranchCaseInsensitive() {
+        let gi = GitInfo(repoName: "repo", branch: "ENG-100-fix")
+        #expect(gi.displayBranch(stripPrefix: false, stripTicket: true) == "fix")
+    }
+
+    @Test("displayBranch with multiple slashes strips last")
+    func displayBranchMultipleSlashes() {
+        let gi = GitInfo(repoName: "repo", branch: "feature/team/eng-99-thing")
+        #expect(gi.displayBranch(stripPrefix: true, stripTicket: true) == "thing")
+    }
+
     @Test("GitInfo is hashable")
     func hashable() {
         let a = GitInfo(repoName: "repo", branch: "main")

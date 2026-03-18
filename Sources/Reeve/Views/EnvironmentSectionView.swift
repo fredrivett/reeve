@@ -84,12 +84,16 @@ struct EnvironmentSectionView: View {
                             .background(Color.secondary.opacity(0.15))
                             .cornerRadius(3)
 
-                        Text(gitInfo.branch)
+                        let displayBranch = gitInfo.displayBranch(
+                            stripPrefix: configService.config.stripBranchPrefix,
+                            stripTicket: configService.config.stripTicketPrefix
+                        )
+                        Text(displayBranch)
                             .font(.system(size: 13, weight: .semibold))
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .layoutPriority(-1)
-                            .help(environment.name)
+                            .help(environment.name + " — " + gitInfo.branch)
                     } else {
                         Text(environment.name)
                             .font(.system(size: 13, weight: .semibold))
