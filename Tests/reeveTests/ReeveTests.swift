@@ -700,6 +700,7 @@ struct AppConfigTests {
         #expect(config.pollIntervalSeconds == 3.0)
         #expect(config.collapsedEnvironments.isEmpty)
         #expect(config.hiddenEnvironments.isEmpty)
+        #expect(config.showRepoName == true)
         #expect(config.expandedInactiveEnvironments.isEmpty)
     }
 
@@ -717,6 +718,7 @@ struct AppConfigTests {
         #expect(jsonObject["pollIntervalSeconds"] != nil)
         #expect(jsonObject["collapsedEnvironments"] != nil)
         #expect(jsonObject["hiddenEnvironments"] != nil)
+        #expect(jsonObject["showRepoName"] != nil)
     }
 
     @Test("Decoding without expandedInactiveEnvironments")
@@ -725,7 +727,8 @@ struct AppConfigTests {
         {
             "pollIntervalSeconds": 5.0,
             "collapsedEnvironments": ["env1"],
-            "hiddenEnvironments": ["env2"]
+            "hiddenEnvironments": ["env2"],
+            "showRepoName": false
         }
         """
         let data = json.data(using: .utf8)!
@@ -734,6 +737,7 @@ struct AppConfigTests {
         #expect(config.pollIntervalSeconds == 5.0)
         #expect(config.collapsedEnvironments == ["env1"])
         #expect(config.hiddenEnvironments == ["env2"])
+        #expect(config.showRepoName == false)
         #expect(config.expandedInactiveEnvironments.isEmpty)
     }
 
@@ -743,6 +747,7 @@ struct AppConfigTests {
         config.pollIntervalSeconds = 10.0
         config.collapsedEnvironments = ["a", "b"]
         config.hiddenEnvironments = ["c"]
+        config.showRepoName = false
         config.expandedInactiveEnvironments = ["should_be_lost"]
 
         let data = try JSONEncoder().encode(config)
@@ -751,7 +756,22 @@ struct AppConfigTests {
         #expect(decoded.pollIntervalSeconds == 10.0)
         #expect(decoded.collapsedEnvironments == ["a", "b"])
         #expect(decoded.hiddenEnvironments == ["c"])
+        #expect(decoded.showRepoName == false)
         #expect(decoded.expandedInactiveEnvironments.isEmpty)
+    }
+
+    @Test("Decoding without showRepoName defaults to true")
+    func decodingWithoutShowRepoName() throws {
+        let json = """
+        {
+            "pollIntervalSeconds": 3.0,
+            "collapsedEnvironments": [],
+            "hiddenEnvironments": []
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        #expect(config.showRepoName == true)
     }
 
     @Test("Decoding empty JSON fails (all fields required)")
@@ -768,7 +788,8 @@ struct AppConfigTests {
         {
             "pollIntervalSeconds": 3.0,
             "collapsedEnvironments": [],
-            "hiddenEnvironments": []
+            "hiddenEnvironments": [],
+            "showRepoName": true
         }
         """
         let data = json.data(using: .utf8)!
@@ -776,6 +797,7 @@ struct AppConfigTests {
         #expect(config.pollIntervalSeconds == 3.0)
         #expect(config.collapsedEnvironments.isEmpty)
         #expect(config.hiddenEnvironments.isEmpty)
+        #expect(config.showRepoName == true)
         #expect(config.expandedInactiveEnvironments.isEmpty)
     }
 }
@@ -824,6 +846,57 @@ struct PM2EnvironmentTests {
     func nonPM2DirectoryName() {
         let env = PM2Environment(path: "/Users/test/randomdir")
         #expect(env.name == "randomdir")
+    }
+}
+
+// MARK: - GitInfo Resolution
+
+@Suite("GitInfo")
+struct GitInfoTests {
+
+    @Test("resolveGitInfo returns repo name and branch for valid git directory")
+    func resolveFromGitDir() throws {
+        // Use the current repo as a known git directory
+        let cwd = FileManager.default.currentDirectoryPath
+        let gitInfo = PM2Environment.resolveGitInfo(from: cwd)
+        #expect(gitInfo != nil)
+        #expect(gitInfo?.repoName.isEmpty == false)
+        #expect(gitInfo?.branch.isEmpty == false)
+    }
+
+    @Test("resolveGitInfo returns nil for non-git directory")
+    func resolveFromNonGitDir() {
+        let gitInfo = PM2Environment.resolveGitInfo(from: "/tmp")
+        #expect(gitInfo == nil)
+    }
+
+    @Test("resolveGitInfo returns nil for empty path")
+    func resolveFromEmptyPath() {
+        let gitInfo = PM2Environment.resolveGitInfo(from: "")
+        #expect(gitInfo == nil)
+    }
+
+    @Test("GitInfo is hashable")
+    func hashable() {
+        let a = GitInfo(repoName: "repo", branch: "main")
+        let b = GitInfo(repoName: "repo", branch: "main")
+        let c = GitInfo(repoName: "repo", branch: "dev")
+        #expect(a == b)
+        #expect(a != c)
+    }
+
+    @Test("PM2Environment gitInfo is nil by default")
+    func defaultGitInfoNil() {
+        let env = PM2Environment(path: "/Users/test/.pm2-myproject")
+        #expect(env.gitInfo == nil)
+    }
+
+    @Test("PM2Environment gitInfo can be set")
+    func setGitInfo() {
+        var env = PM2Environment(path: "/Users/test/.pm2-myproject")
+        env.gitInfo = GitInfo(repoName: "myrepo", branch: "feature/x")
+        #expect(env.gitInfo?.repoName == "myrepo")
+        #expect(env.gitInfo?.branch == "feature/x")
     }
 }
 

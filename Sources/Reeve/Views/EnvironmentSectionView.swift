@@ -75,11 +75,28 @@ struct EnvironmentSectionView: View {
         } label: {
             HStack(alignment: .center, spacing: 6) {
                 HStack(alignment: .center, spacing: 6) {
-                    Text(environment.name)
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .layoutPriority(-1)
+                    if configService.config.showRepoName, let gitInfo = environment.gitInfo {
+                        Text(gitInfo.repoName)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.secondary.opacity(0.15))
+                            .cornerRadius(3)
+
+                        Text(gitInfo.branch)
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(-1)
+                            .help(environment.name)
+                    } else {
+                        Text(environment.name)
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(-1)
+                    }
 
                     if !environment.isActive {
                         Text("offline")

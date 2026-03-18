@@ -114,6 +114,10 @@ public struct ContentView: View {
                 }
 
                 Menu {
+                    Toggle("Show Repo Info", isOn: Binding(
+                        get: { configService.config.showRepoName },
+                        set: { configService.config.showRepoName = $0; configService.save() }
+                    ))
                     Toggle("Launch at Login", isOn: launchAtLoginBinding)
                     Divider()
                     Button("Quit") {
@@ -280,14 +284,20 @@ public struct ContentView: View {
 
         }
         .padding(.bottom, 4)
-        .frame(width: 460)
+        .frame(width: 600)
         .frame(maxHeight: 800)
         .clampToScreen()
     }
 
     private func envNameMatches(_ env: PM2Environment) -> Bool {
         guard !filterText.isEmpty else { return false }
-        return env.name.lowercased().contains(filterText.lowercased())
+        let query = filterText.lowercased()
+        if env.name.lowercased().contains(query) { return true }
+        if let gitInfo = env.gitInfo {
+            if gitInfo.branch.lowercased().contains(query) { return true }
+            if gitInfo.repoName.lowercased().contains(query) { return true }
+        }
+        return false
     }
 
     private func filteredProcesses(for environmentPath: String) -> [PM2Process] {
