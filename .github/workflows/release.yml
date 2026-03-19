@@ -18,14 +18,14 @@ jobs:
       - name: Install create-dmg
         run: brew install create-dmg
 
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Build release DMG
         run: |
           chmod +x scripts/build-release.sh
-          scripts/build-release.sh
-
-      - name: Get version
-        id: version
-        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+          scripts/build-release.sh "${{ steps.version.outputs.version }}"
 
       - name: Compute SHA256
         id: sha
