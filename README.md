@@ -2,6 +2,8 @@
 
 A macOS menu bar app for monitoring and managing [PM2](https://pm2.keymetrics.io/) processes.
 
+![reeve](assets/screenshot.png)
+
 ## Features
 
 - 📊 **Monitor processes** — view real-time status, CPU, memory, uptime, and ports for all PM2 processes with sparkline graphs
