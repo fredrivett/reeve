@@ -46,29 +46,13 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           SHA256="${{ steps.sha.outputs.sha256 }}"
 
+          REPO_ROOT="$(pwd)"
           git clone https://x-access-token:${TAP_TOKEN}@github.com/fredrivett/homebrew-tap.git tap-repo
           cd tap-repo
 
           mkdir -p Casks
 
-          cat > Casks/reeve.rb << CASK
-cask "reeve" do
-  version "${VERSION}"
-  sha256 "${SHA256}"
-
-  url "https://github.com/fredrivett/reeve/releases/download/v#{version}/Reeve-#{version}.dmg"
-  name "reeve"
-  desc "macOS menu bar app for monitoring PM2 processes"
-  homepage "https://github.com/fredrivett/reeve"
-
-  app "Reeve.app"
-
-  postflight do
-    system_command "/usr/bin/xattr",
-      args: ["-c", "#{appdir}/Reeve.app"]
-  end
-end
-CASK
+          sed "s/REPLACE_VERSION/${VERSION}/g; s/REPLACE_SHA256/${SHA256}/g" "${REPO_ROOT}/homebrew/reeve.rb.template" > Casks/reeve.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

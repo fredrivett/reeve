@@ -1,11 +1,16 @@
 cask "reeve" do
-  version "0.1.0"
-  sha256 "REPLACE_WITH_SHA256"
+  version "REPLACE_VERSION"
+  sha256 "REPLACE_SHA256"
 
   url "https://github.com/fredrivett/reeve/releases/download/v#{version}/Reeve-#{version}.dmg"
-  name "Reeve"
+  name "reeve"
   desc "macOS menu bar app for monitoring PM2 processes"
   homepage "https://github.com/fredrivett/reeve"
 
   app "Reeve.app"
+
+  postflight do
+    system_command "/usr/bin/xattr",
+      args: ["-c", "#{appdir}/Reeve.app"]
+  end
 end
