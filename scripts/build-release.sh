@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION=$(cat "$PROJECT_DIR/VERSION")
+VERSION="${1:-$(cat "$PROJECT_DIR/VERSION")}"
 BUILD_DIR="$PROJECT_DIR/.build/release-bundle"
 APP_DIR="$BUILD_DIR/Reeve.app/Contents"
 DMG_OUTPUT="$PROJECT_DIR/.build/Reeve-${VERSION}.dmg"
