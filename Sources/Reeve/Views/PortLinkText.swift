@@ -9,7 +9,7 @@ struct PortLinkText: View {
     var body: some View {
         Text(text)
             .font(.system(size: 10, design: .monospaced))
-            .foregroundColor(port != nil ? Color.accentColor : .secondary)
+            .foregroundColor(port != nil ? Color(.linkColor) : .secondary)
             .underline(isHovered && port != nil)
             .onHover { hovering in
                 isHovered = hovering

@@ -59,27 +59,52 @@ public class PM2Service: ObservableObject {
             return
         }
 
-        let scanned = scanner.scan()
+        var scanned = scanner.scan()
+        // Carry forward existing git info to avoid flashing during refresh
+        let existingGitInfo = Dictionary(uniqueKeysWithValues: environments.compactMap { env in
+            env.gitInfo.map { (env.path, $0) }
+        })
+        for i in scanned.indices {
+            scanned[i].gitInfo = existingGitInfo[scanned[i].path]
+        }
         let activeEnvironments = scanned.filter(\.isActive)
         environments = scanned
 
-        // Fetch processes from all active environments concurrently off the main actor
-        let fetchedResults = await Task.detached { () -> [String: [PM2Process]] in
+        // Fetch processes and resolve git info from all active environments concurrently off the main actor
+        let (fetchedResults, gitInfoResults) = await Task.detached { () -> ([String: [PM2Process]], [String: GitInfo]) in
             let lock = NSLock()
             var results: [String: [PM2Process]] = [:]
+            var gitResults: [String: GitInfo] = [:]
 
             DispatchQueue.concurrentPerform(iterations: activeEnvironments.count) { index in
                 let env = activeEnvironments[index]
                 let processes = PM2Service.fetchProcessesSync(for: env, using: resolution)
+
+                // Resolve git info from the first process with a cwd
+                var gitInfo: GitInfo?
+                if let firstCwd = processes.first(where: { !$0.cwd.isEmpty })?.cwd {
+                    gitInfo = PM2Environment.resolveGitInfo(from: firstCwd)
+                }
+
                 lock.lock()
                 results[env.path] = processes
+                if let gi = gitInfo {
+                    gitResults[env.path] = gi
+                }
                 lock.unlock()
             }
 
-            return results
+            return (results, gitResults)
         }.value
 
         processesByEnvironment = fetchedResults
+
+        // Apply resolved git info to environments
+        for i in environments.indices {
+            if let gi = gitInfoResults[environments[i].path] {
+                environments[i].gitInfo = gi
+            }
+        }
 
         // Record metrics history
         for env in activeEnvironments {

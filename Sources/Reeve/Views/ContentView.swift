@@ -71,8 +71,22 @@ public struct ContentView: View {
                         }
                         .buttonStyle(.borderless)
                         .padding(.trailing, 4)
+                    } else if !filterFocused {
+                        Text("⌘K")
+                            .font(.system(size: 9, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary.opacity(0.6))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.primary.opacity(0.06))
+                            .cornerRadius(3)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                            )
+                            .padding(.trailing, 4)
                     }
                 }
+                .onTapGesture { filterFocused = true }
 
                 let allCollapsed = pm2Service.environments.filter(\.isActive).allSatisfy { configService.isCollapsed($0.path) } && !inactiveExpanded
 
@@ -114,11 +128,22 @@ public struct ContentView: View {
                 }
 
                 Menu {
-                    Toggle("Launch at Login", isOn: launchAtLoginBinding)
-                    Divider()
-                    Button("Quit") {
-                        NSApplication.shared.terminate(nil)
+                    Toggle(isOn: launchAtLoginBinding) {
+                        Label("Launch at Login", systemImage: "person.crop.circle")
                     }
+                    Button {
+                        NotificationCenter.default.post(name: Notification.Name("openSettingsRequest"), object: nil)
+                    } label: {
+                        Label("Settings...", systemImage: "gearshape")
+                    }
+                    .keyboardShortcut(",", modifiers: .command)
+                    Divider()
+                    Button {
+                        NSApplication.shared.terminate(nil)
+                    } label: {
+                        Label("Quit", systemImage: "xmark.square")
+                    }
+                    .keyboardShortcut("q", modifiers: .command)
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 12))
@@ -205,10 +230,14 @@ public struct ContentView: View {
 
                         if !filterText.isEmpty && visibleActiveEnvs.isEmpty {
                             Text("No matching processes")
-                                .font(.system(size: 12))
+                                .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 20)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 12)
+                                .background(Color.primary.opacity(0.05))
+                                .cornerRadius(6)
+                                .padding(.horizontal, Layout.sectionLeadingPadding)
                         }
 
                         ForEach(visibleActiveEnvs) { env in
@@ -221,12 +250,12 @@ public struct ContentView: View {
                             .padding(.trailing, Layout.sectionTrailingPadding)
                             .padding(.vertical, 8)
 
-                            if env.id != visibleActiveEnvs.last?.id || (filterText.isEmpty && !inactiveEnvs.isEmpty) {
+                            if env.id != visibleActiveEnvs.last?.id || (filterText.isEmpty && !inactiveEnvs.isEmpty && configService.config.showInactive) {
                                 Divider().padding(.horizontal, 8)
                             }
                         }
 
-                        if !inactiveEnvs.isEmpty && filterText.isEmpty {
+                        if !inactiveEnvs.isEmpty && filterText.isEmpty && configService.config.showInactive {
                             DisclosureGroup(isExpanded: $inactiveExpanded) {
                                 VStack(alignment: .leading, spacing: 0) {
                                     ForEach(inactiveEnvs) { env in
@@ -280,14 +309,25 @@ public struct ContentView: View {
 
         }
         .padding(.bottom, 4)
-        .frame(width: 460)
-        .frame(maxHeight: 800)
+        .frame(width: configService.config.panelWidth)
+        .frame(maxHeight: configService.config.panelMaxHeight)
         .clampToScreen()
+        .background {
+            Button("") { filterFocused = true }
+                .keyboardShortcut("k", modifiers: .command)
+                .hidden()
+        }
     }
 
     private func envNameMatches(_ env: PM2Environment) -> Bool {
         guard !filterText.isEmpty else { return false }
-        return env.name.lowercased().contains(filterText.lowercased())
+        let query = filterText.lowercased()
+        if env.name.lowercased().contains(query) { return true }
+        if let gitInfo = env.gitInfo {
+            if gitInfo.branch.lowercased().contains(query) { return true }
+            if gitInfo.repoName.lowercased().contains(query) { return true }
+        }
+        return false
     }
 
     private func filteredProcesses(for environmentPath: String) -> [PM2Process] {

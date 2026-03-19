@@ -1,9 +1,45 @@
 import Foundation
 
+public struct GitInfo: Hashable, Sendable {
+    public let repoName: String
+    public let branch: String
+
+    // Matches a Linear-style ticket: 2-5 letters followed by a dash and digits (e.g. "eng-3338", "FE-12")
+    private static let ticketPattern = #"[a-zA-Z]{2,5}-\d+"#
+
+    /// Format the branch name for display, applying optional stripping rules.
+    public func displayBranch(stripPrefix: Bool, stripTicket: Bool) -> String {
+        var result = branch
+
+        // Strip username prefix — everything before the ticket or before a slash
+        // Handles both "fredrivett/eng-3338-fix" and "fredrivett-eng-3338-fix"
+        if stripPrefix {
+            if let range = result.range(of: Self.ticketPattern, options: .regularExpression) {
+                // Username is everything before the ticket, trim trailing slash or dash
+                result = String(result[range.lowerBound...])
+            } else if let slashIndex = result.lastIndex(of: "/") {
+                // No ticket found, fall back to stripping at last slash
+                result = String(result[result.index(after: slashIndex)...])
+            }
+        }
+
+        // Strip ticket prefix like "eng-1234-": "eng-3338-next-button-fix" → "next-button-fix"
+        if stripTicket {
+            result = result.replacingOccurrences(
+                of: #"^[a-zA-Z]{2,5}-\d+-"#,
+                with: "",
+                options: .regularExpression
+            )
+        }
+        return result
+    }
+}
+
 public struct PM2Environment: Identifiable, Hashable, Sendable {
     public let path: String
     public let name: String
     public var isActive: Bool
+    public var gitInfo: GitInfo?
 
     public var id: String { path }
 
@@ -18,6 +54,37 @@ public struct PM2Environment: Identifiable, Hashable, Sendable {
             name = String(dirName.dropFirst(5))
         } else {
             name = dirName
+        }
+    }
+
+    /// Resolve git info from a process cwd. Call after processes are fetched.
+    public static func resolveGitInfo(from cwd: String) -> GitInfo? {
+        guard !cwd.isEmpty else { return nil }
+
+        guard let repoRoot = runGit(["-C", cwd, "rev-parse", "--show-toplevel"]),
+              let branch = runGit(["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"]) else {
+            return nil
+        }
+
+        let repoName = (repoRoot as NSString).lastPathComponent
+        return GitInfo(repoName: repoName, branch: branch)
+    }
+
+    private static func runGit(_ args: [String]) -> String? {
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = args
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            return nil
         }
     }
 }
