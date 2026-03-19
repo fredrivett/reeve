@@ -283,7 +283,7 @@ public struct ContentView: View {
 
         }
         .padding(.bottom, 4)
-        .frame(width: 600)
+        .frame(width: configService.config.panelWidth)
         .frame(maxHeight: 800)
         .clampToScreen()
     }

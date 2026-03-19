@@ -37,7 +37,9 @@ struct ReeveApp: App {
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.primary, .primary)
                     .font(.system(size: 22))
-                Text(pm2Service.hasCompletedFirstScan ? "\(count)" : "\u{2014}")
+                if configService.config.showMenuBarCount {
+                    Text(pm2Service.hasCompletedFirstScan ? "\(count)" : "\u{2014}")
+                }
             }
         }
         .menuBarExtraStyle(.window)
