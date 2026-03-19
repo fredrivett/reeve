@@ -1,6 +1,8 @@
 import SwiftUI
 
 private struct SettingsLabelStyle: LabelStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 8) {
             configuration.icon
@@ -8,6 +10,7 @@ private struct SettingsLabelStyle: LabelStyle {
                 .frame(width: 16)
             configuration.title
         }
+        .opacity(isEnabled ? 1 : 0.4)
     }
 }
 
@@ -72,6 +75,7 @@ public struct SettingsView: View {
                 )) {
                     Label("Show inactive environments", systemImage: "eye")
                 }
+
             }
             Section("Panel") {
                 HStack {
