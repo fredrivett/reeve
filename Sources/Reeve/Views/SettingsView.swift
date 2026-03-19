@@ -17,6 +17,7 @@ public struct SettingsView: View {
                 set: { configService.config.stripBranchPrefix = $0; configService.save() }
             ))
             .disabled(!configService.config.showRepoName || configService.config.stripTicketPrefix)
+            .padding(.leading, 10)
 
             Toggle("Strip ticket prefix", isOn: Binding(
                 get: { configService.config.stripTicketPrefix },
@@ -29,13 +30,11 @@ public struct SettingsView: View {
                 }
             ))
             .disabled(!configService.config.showRepoName)
+            .padding(.leading, 10)
         }
         .formStyle(.grouped)
         .frame(width: 300)
         .fixedSize()
         .navigationTitle("reeve settings")
-        .onAppear {
-            NSApp.activate(ignoringOtherApps: true)
-        }
     }
 }

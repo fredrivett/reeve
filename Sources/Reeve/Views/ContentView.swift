@@ -115,14 +115,8 @@ public struct ContentView: View {
 
                 Menu {
                     Toggle("Launch at Login", isOn: launchAtLoginBinding)
-                    if #available(macOS 14.0, *) {
-                        SettingsLink {
-                            Text("Settings...")
-                        }
-                    } else {
-                        Button("Settings...") {
-                            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-                        }
+                    Button("Settings...") {
+                        NotificationCenter.default.post(name: Notification.Name("openSettingsRequest"), object: nil)
                     }
                     Divider()
                     Button("Quit") {
