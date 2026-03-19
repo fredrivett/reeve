@@ -117,5 +117,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 window.orderOut(nil)
             }
         }
+
+        // Intercept ⌘, so it goes through the same bring-to-front flow as clicking "Settings..."
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "," {
+                NotificationCenter.default.post(name: .openSettingsRequest, object: nil)
+                return nil // swallow the event
+            }
+            return event
+        }
     }
 }

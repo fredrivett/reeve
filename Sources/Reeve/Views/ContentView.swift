@@ -114,14 +114,22 @@ public struct ContentView: View {
                 }
 
                 Menu {
-                    Toggle("Launch at Login", isOn: launchAtLoginBinding)
-                    Button("Settings...") {
+                    Toggle(isOn: launchAtLoginBinding) {
+                        Label("Launch at Login", systemImage: "person.crop.circle")
+                    }
+                    Button {
                         NotificationCenter.default.post(name: Notification.Name("openSettingsRequest"), object: nil)
+                    } label: {
+                        Label("Settings...", systemImage: "gearshape")
                     }
+                    .keyboardShortcut(",", modifiers: .command)
                     Divider()
-                    Button("Quit") {
+                    Button {
                         NSApplication.shared.terminate(nil)
+                    } label: {
+                        Label("Quit", systemImage: "xmark.square")
                     }
+                    .keyboardShortcut("q", modifiers: .command)
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 12))
