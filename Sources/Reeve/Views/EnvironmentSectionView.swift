@@ -76,13 +76,15 @@ struct EnvironmentSectionView: View {
             HStack(alignment: .center, spacing: 6) {
                 HStack(alignment: .center, spacing: 6) {
                     if configService.config.showRepoName, let gitInfo = environment.gitInfo {
-                        Text(gitInfo.repoName)
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(Color.secondary.opacity(0.15))
-                            .cornerRadius(3)
+                        if configService.config.showWorkspaceName {
+                            Text(environment.name)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.secondary.opacity(0.15))
+                                .cornerRadius(3)
+                        }
 
                         let displayBranch = gitInfo.displayBranch(
                             stripPrefix: configService.config.stripBranchPrefix,
@@ -93,7 +95,7 @@ struct EnvironmentSectionView: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .layoutPriority(-1)
-                            .help(environment.name + " — " + gitInfo.branch)
+                            .help(configService.config.showWorkspaceName ? gitInfo.branch : environment.name + " — " + gitInfo.branch)
                     } else {
                         Text(environment.name)
                             .font(.system(size: 13, weight: .semibold))

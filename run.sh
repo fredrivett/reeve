@@ -18,7 +18,7 @@ cat > "$APP_DIR/Info.plist" << EOF
     <key>CFBundleIdentifier</key>
     <string>com.reeve.app</string>
     <key>CFBundleName</key>
-    <string>Reeve</string>
+    <string>reeve</string>
     <key>CFBundleExecutable</key>
     <string>reeve</string>
     <key>CFBundlePackageType</key>

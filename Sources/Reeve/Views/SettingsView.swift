@@ -12,6 +12,13 @@ public struct SettingsView: View {
                 set: { configService.config.showRepoName = $0; configService.save() }
             ))
 
+            Toggle("Show workspace name", isOn: Binding(
+                get: { configService.config.showWorkspaceName },
+                set: { configService.config.showWorkspaceName = $0; configService.save() }
+            ))
+            .disabled(!configService.config.showRepoName)
+            .padding(.leading, 10)
+
             Toggle("Strip username prefix", isOn: Binding(
                 get: { configService.config.stripBranchPrefix },
                 set: { configService.config.stripBranchPrefix = $0; configService.save() }
