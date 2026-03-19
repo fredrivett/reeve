@@ -168,6 +168,8 @@ struct EnvironmentSectionView: View {
                     HStack(spacing: 2) {
                         if let samples = pm2Service.metricsHistory.history["env:\(environment.path)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.cpu), color: .blue)
+                        } else {
+                            Color.clear.frame(width: 30, height: 12)
                         }
                         PaddedStatText(value: totalCPU, suffix: "%", totalDigits: 3)
                     }
@@ -176,6 +178,8 @@ struct EnvironmentSectionView: View {
                     HStack(spacing: 2) {
                         if let samples = pm2Service.metricsHistory.history["env:\(environment.path)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.memoryMB), color: .purple)
+                        } else {
+                            Color.clear.frame(width: 30, height: 12)
                         }
                         PaddedStatText(value: totalMemMB, suffix: "MB", totalDigits: 3)
                     }

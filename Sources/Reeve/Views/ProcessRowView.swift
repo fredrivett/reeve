@@ -93,12 +93,16 @@ struct ProcessRowView: View {
                     HStack(spacing: 2) {
                         if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.cpu), color: .blue)
+                        } else {
+                            Color.clear.frame(width: 30, height: 12)
                         }
                         PaddedStatText(value: process.cpuPercent, suffix: "%", totalDigits: 3)
                     }
                     HStack(spacing: 2) {
                         if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.memoryMB), color: .purple)
+                        } else {
+                            Color.clear.frame(width: 30, height: 12)
                         }
                         PaddedStatText(value: process.memoryMB, suffix: "MB", totalDigits: 3)
                     }
