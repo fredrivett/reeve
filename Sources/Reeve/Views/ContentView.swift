@@ -244,6 +244,7 @@ public struct ContentView: View {
                             EnvironmentSectionView(
                                 environment: env,
                                 processes: envNameMatches(env) ? (pm2Service.processesByEnvironment[env.path] ?? []) : filteredProcesses(for: env.path),
+                                errorMessage: pm2Service.errorsByEnvironment[env.path],
                                 forceExpanded: !filterText.isEmpty
                             )
                             .padding(.leading, Layout.sectionLeadingPadding)

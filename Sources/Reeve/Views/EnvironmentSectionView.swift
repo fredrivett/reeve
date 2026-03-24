@@ -3,6 +3,7 @@ import SwiftUI
 struct EnvironmentSectionView: View {
     let environment: PM2Environment
     let processes: [PM2Process]
+    var errorMessage: String?
     var forceExpanded: Bool = false
     @EnvironmentObject var configService: ConfigService
     @EnvironmentObject var pm2Service: PM2Service
@@ -52,7 +53,51 @@ struct EnvironmentSectionView: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
-            if processes.isEmpty {
+            if let errorMessage {
+                let parsed = Self.parseErrorMessage(errorMessage)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                        Text(parsed.title)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.primary.opacity(0.8))
+                    }
+                    if let detail = parsed.detail {
+                        Text(detail)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
+                    if parsed.suggestKill {
+                        Button {
+                            Task { await pm2Service.killDaemon(environment: environment) }
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 8))
+                                Text("Kill daemon")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.15))
+                            .cornerRadius(4)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.orange)
+                        .onHover { hovering in
+                            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 12)
+                .background(Color.orange.opacity(0.08))
+                .cornerRadius(6)
+            } else if processes.isEmpty {
                 Text("No processes")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -264,6 +309,41 @@ struct EnvironmentSectionView: View {
     private func formattedPortRange() -> String? {
         let ports = processes.compactMap(\.port).sorted()
         return formatPortRange(from: ports)
+    }
+
+    private struct ParsedError {
+        let title: String
+        let detail: String?
+        let suggestKill: Bool
+    }
+
+    private static func parseErrorMessage(_ message: String) -> ParsedError {
+        let lower = message.lowercased()
+
+        // Socket connection errors — daemon is broken/zombie
+        if lower.contains("einval") || lower.contains("econnrefused") || lower.contains("enoent") || lower.contains("econnreset") {
+            return ParsedError(
+                title: "Daemon not responding",
+                detail: "The PM2 daemon socket is broken or stale.",
+                suggestKill: true
+            )
+        }
+
+        // Timeout or hang
+        if lower.contains("timeout") || lower.contains("timed out") {
+            return ParsedError(
+                title: "Daemon timed out",
+                detail: "The PM2 daemon is not responding to commands.",
+                suggestKill: true
+            )
+        }
+
+        // Generic — show the raw message but still offer kill
+        return ParsedError(
+            title: "Unexpected error",
+            detail: message,
+            suggestKill: true
+        )
     }
 
     private func headerCrashLoopPrompt() -> String {
