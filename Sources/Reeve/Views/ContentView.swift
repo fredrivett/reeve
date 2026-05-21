@@ -8,6 +8,7 @@ public struct ContentView: View {
     @FocusState private var filterFocused: Bool
     @State private var inactiveExpanded = false
     @State private var shimmerInactive = false
+    @State private var scrollContentHeight: CGFloat = 0
 
     private var launchAtLoginBinding: Binding<Bool> {
         Binding(
@@ -181,7 +182,7 @@ public struct ContentView: View {
 
             // Process list
             if !pm2Service.hasCompletedFirstScan {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     let nameWidths: [CGFloat] = [90, 120, 70]
                     ForEach(0..<3, id: \.self) { index in
                         SkeletonRowView(nameWidth: nameWidths[index])
@@ -221,7 +222,7 @@ public struct ContentView: View {
                 .padding(.vertical, 20)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
                         let activeEnvs = pm2Service.environments.filter(\.isActive)
                         let inactiveEnvs = pm2Service.environments.filter { !$0.isActive }
                         let visibleActiveEnvs = filterText.isEmpty ? activeEnvs : activeEnvs.filter { env in
@@ -305,13 +306,20 @@ public struct ContentView: View {
                             .padding(.vertical, 8)
                         }
                     }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .background(GeometryReader { proxy in
+                        Color.clear.preference(key: ScrollContentHeightKey.self, value: proxy.size.height)
+                    })
+                }
+                .frame(height: min(scrollContentHeight, configService.config.panelMaxHeight))
+                .onPreferenceChange(ScrollContentHeightKey.self) { h in
+                    if h > 0 { scrollContentHeight = h }
                 }
             }
 
         }
         .padding(.bottom, 4)
         .frame(width: configService.config.panelWidth)
-        .frame(maxHeight: configService.config.panelMaxHeight)
         .clampToScreen()
         .background {
             Button("") { filterFocused = true }
@@ -339,5 +347,12 @@ public struct ContentView: View {
             process.name.lowercased().contains(query) ||
             (process.port.map { String($0).contains(query) } ?? false)
         }
+    }
+}
+
+private struct ScrollContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
