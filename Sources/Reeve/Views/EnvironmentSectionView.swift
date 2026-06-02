@@ -125,6 +125,8 @@ struct EnvironmentSectionView: View {
                             Text(environment.name)
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
                                 .background(Color.secondary.opacity(0.15))
@@ -139,7 +141,6 @@ struct EnvironmentSectionView: View {
                             .font(.system(size: 13, weight: .semibold))
                             .lineLimit(1)
                             .truncationMode(.tail)
-                            .layoutPriority(-1)
                             .help(configService.config.showWorkspaceName ? gitInfo.branch : environment.name + " — " + gitInfo.branch)
                     } else {
                         Text(environment.name)
