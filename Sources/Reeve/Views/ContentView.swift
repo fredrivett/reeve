@@ -309,8 +309,7 @@ public struct ContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .background(GeometryReader { proxy in
                         Color.clear.preference(key: ScrollContentHeightKey.self, value: proxy.size.height)
-                    })
-                    .onChange(of: inactiveExpanded) { _ in scrollContentHeight = 0 }
+                    }.id(inactiveExpanded))
                 }
                 .frame(height: min(scrollContentHeight, configService.config.panelMaxHeight))
                 .animation(.none, value: scrollContentHeight)
