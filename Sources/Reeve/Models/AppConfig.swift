@@ -19,7 +19,11 @@ public struct AppConfig: Codable {
     public init() {}
 
     enum CodingKeys: String, CodingKey {
-        case panelWidth, panelMaxHeight, pollIntervalSeconds, collapsedEnvironments, hiddenEnvironments, showRepoName, showWorkspaceName, stripBranchPrefix, stripTicketPrefix, showMenuBarCount, showInactive
+        case panelWidth, panelMaxHeight, pollIntervalSeconds
+        case collapsedEnvironments, hiddenEnvironments
+        case showRepoName, showWorkspaceName
+        case stripBranchPrefix, stripTicketPrefix
+        case showMenuBarCount, showInactive
     }
 
     public init(from decoder: Decoder) throws {

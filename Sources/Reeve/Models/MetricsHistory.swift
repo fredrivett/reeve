@@ -41,8 +41,7 @@ public class MetricsHistory: ObservableObject {
         guard values.count > 1 else {
             return values.isEmpty ? [] : [0.5]
         }
-        let minVal = values.min()!
-        let maxVal = values.max()!
+        guard let minVal = values.min(), let maxVal = values.max() else { return [] }
         let range = maxVal - minVal
         if range == 0 {
             return values.map { _ in 0.5 }

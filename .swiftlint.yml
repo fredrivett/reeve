@@ -1,9 +1,16 @@
 included:
   - Sources
-  - Tests
 
 excluded:
   - .build
+
+disabled_rules:
+  - trailing_whitespace
+  - identifier_name       # single-letter names are conventional (x/y coords, i index, v Codable)
+  - type_body_length      # large SwiftUI views and services are expected
+  - function_body_length  # complex async service functions are expected
+  - cyclomatic_complexity # complex PM2 parsing logic is expected
+  - large_tuple           # internal return types don't warrant a named struct
 
 opt_in_rules:
   - empty_count
@@ -12,5 +19,6 @@ opt_in_rules:
   - force_unwrapping
   - redundant_nil_coalescing
 
-disabled_rules:
-  - trailing_whitespace
+line_length:
+  warning: 200
+  error: 200

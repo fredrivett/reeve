@@ -379,8 +379,7 @@ struct EnvironmentSectionView: View {
 public func formatPortRange(from ports: [Int]) -> String? {
     guard !ports.isEmpty else { return nil }
 
-    let minPort = ports.first!
-    let maxPort = ports.last!
+    guard let minPort = ports.first, let maxPort = ports.last else { return nil }
 
     // If all ports fit within a 10-port range, show as e.g. "5500X"
     let base = minPort / 10

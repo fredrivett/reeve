@@ -332,7 +332,7 @@ public class PM2Service: ObservableObject {
                 for logPath in [processes[i].outLogPath, processes[i].errLogPath] where !logPath.isEmpty {
                     if let attrs = try? fm.attributesOfItem(atPath: logPath),
                        let modified = attrs[.modificationDate] as? Date {
-                        if newest == nil || modified > newest! {
+                        if newest == nil || modified > newest ?? .distantPast {
                             newest = modified
                         }
                     }
