@@ -1,0 +1,16 @@
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - first_where
+  - force_unwrapping
+  - redundant_nil_coalescing
+
+disabled_rules:
+  - trailing_whitespace
