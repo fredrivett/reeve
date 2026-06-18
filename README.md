@@ -1,8 +1,12 @@
 # reeve
 
-A macOS menu bar app for monitoring and managing [PM2](https://pm2.keymetrics.io/) processes.
+Keep an eye on your [PM2](https://pm2.keymetrics.io/) processes from the macOS menu bar — live status, CPU, memory, logs, and one-click restart/stop, without keeping a terminal open.
 
 ![reeve](assets/screenshot.png)
+
+## Why reeve?
+
+`pm2 monit` and `pm2 logs` live in a terminal tab you have to keep open and remember to check. reeve puts the same information one click away in your menu bar: a glanceable health indicator that's always there, plus the controls to restart, stop, or inspect logs for a process without switching context. It discovers every PM2 workspace on your machine automatically and groups processes by environment, so juggling multiple projects stays manageable.
 
 ## Features
 
@@ -10,6 +14,7 @@ A macOS menu bar app for monitoring and managing [PM2](https://pm2.keymetrics.io
 - 🎛️ **Manage processes** — restart, stop, or delete individual processes directly from the menu bar
 - 🗂️ **Multiple environments** — automatically discovers all PM2 workspaces (`~/.pm2`, `~/.pm2-*`)
 - 🔁 **Crash-loop detection** — flags processes that are rapidly restarting and provides debug info
+- 🛟 **Daemon error recovery** — surfaces PM2 daemon errors inline with a one-click kill to clear stuck or duplicate daemons
 - 🪵 **Live log streaming** — view process logs in real-time with ANSI color stripping
 - 🔔 **Desktop notifications** — get alerted when processes crash or restart
 - 🔀 **Git repo & branch info** — shows the git repo name and branch for each environment, with configurable prefix/ticket stripping
@@ -19,8 +24,25 @@ A macOS menu bar app for monitoring and managing [PM2](https://pm2.keymetrics.io
 
 ## Install
 
+The recommended way to install reeve is via [Homebrew](https://brew.sh):
+
 ```bash
 brew install --cask fredrivett/tap/reeve
+```
+
+This handles everything for you, including clearing the quarantine flag so the app opens without any Gatekeeper warnings.
+
+### Installing the DMG directly
+
+reeve is **not yet code-signed or notarized** (that needs a paid Apple Developer account, which is a potential follow-up). The Homebrew cask handles this automatically, so it's the smoothest path. If you download the `.dmg` from the [releases page](https://github.com/fredrivett/reeve/releases) instead, macOS Gatekeeper will warn that the app is from an unidentified developer. To open it:
+
+1. Drag **reeve** to your Applications folder.
+2. Right-click (or Control-click) **reeve.app** and choose **Open**, then confirm in the dialog. You only need to do this once.
+
+If macOS still refuses to open it, clear the quarantine flag manually:
+
+```bash
+xattr -c /Applications/reeve.app
 ```
 
 ## Requirements
@@ -69,3 +91,7 @@ Sources/
 Tests/
 └── reeveTests/        # Test suite
 ```
+
+## License
+
+reeve is released under the [MIT License](LICENSE).
