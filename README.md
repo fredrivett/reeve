@@ -30,11 +30,11 @@ The recommended way to install reeve is via [Homebrew](https://brew.sh):
 brew install --cask fredrivett/tap/reeve
 ```
 
-This handles everything for you, including clearing the quarantine flag so the app opens straight away.
+This handles everything for you, including clearing the quarantine flag so the app opens without any Gatekeeper warnings.
 
 ### Installing the DMG directly
 
-reeve is **not yet code-signed or notarized** (that needs a paid Apple Developer account, which is a planned follow-up). The Homebrew cask handles this automatically, so it's the smoothest path. If you download the `.dmg` from the [releases page](https://github.com/fredrivett/reeve/releases) instead, macOS Gatekeeper will warn that the app is from an unidentified developer. To open it:
+reeve is **not yet code-signed or notarized** (that needs a paid Apple Developer account, which is a potential follow-up). The Homebrew cask handles this automatically, so it's the smoothest path. If you download the `.dmg` from the [releases page](https://github.com/fredrivett/reeve/releases) instead, macOS Gatekeeper will warn that the app is from an unidentified developer. To open it:
 
 1. Drag **reeve** to your Applications folder.
 2. Right-click (or Control-click) **reeve.app** and choose **Open**, then confirm in the dialog. You only need to do this once.
