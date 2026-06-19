@@ -1,0 +1,16 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+# Resolve dependencies and compile so the first run is fast and compile errors surface early.
+setup = "swift build"
+
+# Build and launch reeve as a proper .app bundle (required for the MenuBarExtra).
+run = "./run.sh"
+
+# reeve keeps running in the menu bar after launch; terminate this workspace's
+# instance when the workspace is archived so it doesn't linger.
+archive = "pkill -f \"$CONDUCTOR_WORKSPACE_PATH/.build/Reeve.app\" || true"
+
+# reeve is a menu bar app with a fixed bundle identifier (com.reeve.app) and a
+# single status-bar icon, so only one instance can run at a time.
+run_mode = "nonconcurrent"
