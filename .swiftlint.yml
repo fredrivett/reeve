@@ -23,3 +23,9 @@ opt_in_rules:
 line_length:
   warning: 200
   error: 200
+
+# Central services (e.g. PM2Service) legitimately run long, in the same spirit
+# as the disabled *_body_length rules above.
+file_length:
+  warning: 600
+  error: 800

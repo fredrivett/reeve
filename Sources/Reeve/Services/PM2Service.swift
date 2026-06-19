@@ -376,7 +376,7 @@ public class PM2Service: ObservableObject {
         let proc = Process()
         let pipe = Pipe()
         proc.executableURL = URL(fileURLWithPath: "/bin/sh")
-        proc.arguments = ["-c", DemoData.logScript(for: process.name)]
+        proc.arguments = ["-c", DemoData.logScript(for: process.name, crashing: process.isCrashLooping)]
         proc.standardOutput = pipe
         proc.standardError = FileHandle.nullDevice
 
