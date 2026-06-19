@@ -36,5 +36,5 @@ EOF
 # Copy binary
 cp .build/arm64-apple-macosx/debug/reeve "$APP_DIR/MacOS/reeve"
 
-# Launch
-open .build/Reeve.app
+# Launch (forwards args to the app, e.g. `./run.sh --demo` for demo mode)
+open .build/Reeve.app --args "$@"
