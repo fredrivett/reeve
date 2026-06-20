@@ -65,6 +65,7 @@ struct ReeveApp: App {
             }
         }
         .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
 
         Settings {
             SettingsView()
@@ -176,6 +177,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if LaunchOptions.standaloneWindow {
                 NSApp.activate(ignoringOtherApps: true)
                 for window in NSApp.windows where window.title == "reeve" {
+                    // Strip all window chrome for a clean, popover-like panel.
+                    window.titleVisibility = .hidden
+                    window.titlebarAppearsTransparent = true
+                    window.isMovableByWindowBackground = true
+                    window.standardWindowButton(.closeButton)?.isHidden = true
+                    window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+                    window.standardWindowButton(.zoomButton)?.isHidden = true
                     window.makeKeyAndOrderFront(nil)
                     window.orderFrontRegardless()
                 }
