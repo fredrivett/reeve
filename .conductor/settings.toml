@@ -5,7 +5,9 @@
 setup = "swift build"
 
 # Build and launch reeve as a proper .app bundle (required for the MenuBarExtra).
-run = "./run.sh"
+# Use demo mode so the app is populated with synthetic workspaces and processes
+# without needing real PM2 daemons running.
+run = "./run.sh --demo"
 
 # reeve keeps running in the menu bar after launch; terminate this workspace's
 # instance when the workspace is archived so it doesn't linger.

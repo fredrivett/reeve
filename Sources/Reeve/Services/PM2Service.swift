@@ -28,7 +28,16 @@ public class PM2Service: ObservableObject {
     public let metricsHistory = MetricsHistory()
     public var isPolling = false
 
+    /// Non-nil when running in demo mode (`--demo` / `REEVE_DEMO=1`). When set,
+    /// all data and controls route through synthetic fixtures instead of PM2.
+    private let demo: DemoData?
+    public var isDemoMode: Bool { demo != nil }
+
     public init() {
+        let demoEnabled = ProcessInfo.processInfo.arguments.contains("--demo")
+            || ProcessInfo.processInfo.environment["REEVE_DEMO"] == "1"
+        demo = demoEnabled ? DemoData() : nil
+
         notificationService.requestPermission()
         // Start polling immediately on creation
         startPolling()
@@ -54,6 +63,11 @@ public class PM2Service: ObservableObject {
     }
 
     public func refresh() async {
+        if demo != nil {
+            applyDemoSnapshot(tick: true)
+            return
+        }
+
         let resolution: PM2BinaryResolver.Resolution
         do {
             resolution = try await resolver.resolve()
@@ -175,19 +189,64 @@ public class PM2Service: ObservableObject {
         hasCompletedFirstScan = true
     }
 
+    /// Push the current demo fixture state into the published properties,
+    /// feeding metrics and notifications exactly as a real refresh would.
+    private func applyDemoSnapshot(tick: Bool) {
+        guard let demo else { return }
+        if tick { demo.tick() }
+        error = nil
+
+        let snapshotEnvironments = demo.environmentsSnapshot
+        environments = snapshotEnvironments
+        let processes = demo.processesSnapshot()
+        processesByEnvironment = processes
+        errorsByEnvironment = demo.errorsSnapshot()
+
+        for env in snapshotEnvironments where env.isActive {
+            guard let procs = processes[env.path] else { continue }
+            for process in procs where process.isOnline {
+                metricsHistory.record(process: process, environmentPath: env.path)
+            }
+            metricsHistory.recordEnvironment(path: env.path, processes: procs)
+            notificationService.checkForChanges(environment: env, processes: procs)
+        }
+
+        hasCompletedFirstScan = true
+    }
+
     public func restart(process: PM2Process, environment: PM2Environment) async {
+        if let demo {
+            demo.restart(name: process.name, envPath: environment.path)
+            applyDemoSnapshot(tick: false)
+            return
+        }
         await runControl(["restart", process.name], environment: environment)
     }
 
     public func stop(process: PM2Process, environment: PM2Environment) async {
+        if let demo {
+            demo.stop(name: process.name, envPath: environment.path)
+            applyDemoSnapshot(tick: false)
+            return
+        }
         await runControl(["stop", process.name], environment: environment)
     }
 
     public func delete(process: PM2Process, environment: PM2Environment) async {
+        if let demo {
+            demo.delete(name: process.name, envPath: environment.path)
+            applyDemoSnapshot(tick: false)
+            return
+        }
         await runControl(["delete", process.name], environment: environment)
     }
 
     public func killDaemon(environment: PM2Environment) async {
+        if let demo {
+            demo.killDaemon(envPath: environment.path)
+            applyDemoSnapshot(tick: false)
+            return
+        }
         // Force-kill all PM2 processes for this environment by finding them via PM2_HOME in their
         // command line args, then fall back to pm2 kill for good measure.
         await Task.detached {
@@ -236,11 +295,21 @@ public class PM2Service: ObservableObject {
     }
 
     public func clearEnvironment(_ environment: PM2Environment) {
+        if let demo {
+            demo.clearEnvironment(envPath: environment.path)
+            applyDemoSnapshot(tick: false)
+            return
+        }
         try? FileManager.default.removeItem(atPath: environment.path)
         environments.removeAll { $0.path == environment.path }
     }
 
     public func clearInactiveEnvironments() {
+        if let demo {
+            demo.clearInactive()
+            applyDemoSnapshot(tick: false)
+            return
+        }
         let inactive = environments.filter { !$0.isActive }
         for env in inactive {
             try? FileManager.default.removeItem(atPath: env.path)
@@ -255,6 +324,10 @@ public class PM2Service: ObservableObject {
         environment: PM2Environment,
         onLine: @escaping @Sendable (String) -> Void
     ) -> Process? {
+        if isDemoMode {
+            return startDemoLogStream(process: process, onLine: onLine)
+        }
+
         guard let resolution = cachedResolution else { return nil }
 
         let proc = Process()
@@ -292,6 +365,33 @@ public class PM2Service: ObservableObject {
     public func stopLogStream(_ process: Process?) {
         guard let process, process.isRunning else { return }
         process.terminate()
+    }
+
+    /// Demo log stream: a `/bin/sh` process that echoes canned lines with small
+    /// delays. Reuses the exact same pipe/termination path as a real `pm2 logs`.
+    private func startDemoLogStream(
+        process: PM2Process,
+        onLine: @escaping @Sendable (String) -> Void
+    ) -> Process? {
+        let proc = Process()
+        let pipe = Pipe()
+        proc.executableURL = URL(fileURLWithPath: "/bin/sh")
+        proc.arguments = ["-c", DemoData.logScript(for: process.name, crashing: process.isCrashLooping)]
+        proc.standardOutput = pipe
+        proc.standardError = FileHandle.nullDevice
+
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let line = String(data: data, encoding: .utf8) else { return }
+            onLine(line)
+        }
+
+        do {
+            try proc.run()
+            return proc
+        } catch {
+            return nil
+        }
     }
 
     // MARK: - Private
