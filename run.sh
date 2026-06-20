@@ -9,6 +9,13 @@ swift build
 APP_DIR=".build/Reeve.app/Contents"
 mkdir -p "$APP_DIR/MacOS"
 
+# In --window mode run as a regular app (dock icon, normal windows) so the
+# standalone panel reliably shows; otherwise stay a menu-bar-only agent.
+UI_ELEMENT=$'    <key>LSUIElement</key>\n    <true/>'
+case " $* " in
+    *" --window "*) UI_ELEMENT="" ;;
+esac
+
 # Create Info.plist
 cat > "$APP_DIR/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -27,8 +34,7 @@ cat > "$APP_DIR/Info.plist" << EOF
     <string>${VERSION}</string>
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
-    <key>LSUIElement</key>
-    <true/>
+${UI_ELEMENT}
 </dict>
 </plist>
 EOF
