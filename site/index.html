@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>reeve — monitor your PM2 processes from the macOS menu bar</title>
+  <meta name="description" content="reeve is a free, open-source macOS menu bar app for monitoring and managing PM2 processes — status, CPU, memory, logs, crash-loop detection, and one-click restart/stop, without keeping a terminal open." />
+
+  <!-- Social preview -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://reeve.fredrivett.com/" />
+  <meta property="og:title" content="reeve — monitor your PM2 processes from the macOS menu bar" />
+  <meta property="og:description" content="A free, open-source macOS menu bar app for monitoring and managing PM2 processes. Install with one line via Homebrew." />
+  <meta property="og:image" content="https://reeve.fredrivett.com/demo.gif" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <h1 class="wordmark">reeve</h1>
+      <p class="tagline">Keep an eye on your PM2 processes from the macOS menu bar.</p>
+      <p class="subtitle">Live status, CPU, memory, logs, and one-click restart/stop — without keeping a terminal open.</p>
+
+      <div class="install">
+        <code id="install-cmd">brew install --cask fredrivett/tap/reeve</code>
+        <button id="copy-btn" type="button" aria-label="Copy install command">Copy</button>
+      </div>
+
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/fredrivett/reeve">View on GitHub</a>
+        <a class="btn btn-ghost" href="https://github.com/fredrivett/reeve/releases">Download DMG</a>
+      </div>
+
+      <p class="reqs">Free &amp; open source (MIT) · macOS 13+ · requires <a href="https://pm2.keymetrics.io/">PM2</a></p>
+    </header>
+
+    <section class="demo">
+      <img src="demo.gif" alt="reeve showing PM2 processes grouped by workspace in the macOS menu bar, with status, CPU, memory, sparklines, and a daemon error with a kill button" />
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <h3>Monitor at a glance</h3>
+        <p>Status, CPU, memory, uptime and ports for every process, with sparkline history.</p>
+      </div>
+      <div class="feature">
+        <h3>Manage without the terminal</h3>
+        <p>Restart, stop or delete any process straight from the menu bar.</p>
+      </div>
+      <div class="feature">
+        <h3>Grouped by workspace</h3>
+        <p>Auto-discovers every PM2 workspace and groups processes by environment — built for juggling several projects at once.</p>
+      </div>
+      <div class="feature">
+        <h3>Crash-loop detection</h3>
+        <p>Flags processes that are rapidly restarting, so you spot trouble before it spreads.</p>
+      </div>
+      <div class="feature">
+        <h3>Daemon error recovery</h3>
+        <p>Surfaces a broken PM2 daemon inline, with a one-click kill to clear stuck or duplicate daemons.</p>
+      </div>
+      <div class="feature">
+        <h3>Live logs &amp; notifications</h3>
+        <p>Stream process logs in real time, and get a desktop alert when something crashes or restarts.</p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>
+        <a href="https://github.com/fredrivett/reeve">GitHub</a>
+        ·
+        <a href="https://github.com/fredrivett/reeve/blob/main/LICENSE">MIT License</a>
+      </p>
+      <p class="copyright">© 2026 Jotmake Ltd</p>
+    </footer>
+  </main>
+
+  <script>
+    const btn = document.getElementById('copy-btn');
+    const cmd = document.getElementById('install-cmd');
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(cmd.textContent);
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1500);
+      } catch (err) {
+        // Clipboard unavailable — leave the command visible for manual copy.
+      }
+    });
+  </script>
+</body>
+</html>
