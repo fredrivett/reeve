@@ -2,7 +2,7 @@
 
 Keep an eye on your [PM2](https://pm2.keymetrics.io/) processes from the macOS menu bar — live status, CPU, memory, logs, and one-click restart/stop, without keeping a terminal open.
 
-![reeve](assets/screenshot.png)
+![reeve](assets/demo.gif)
 
 ## Why reeve?
 
@@ -66,7 +66,11 @@ The app runs as a menu bar accessory (no Dock icon). It polls PM2 for process st
 
 ## Configuration
 
-Config is stored at `~/.config/reeve/config.json`:
+Most options can be changed from the native settings window (⌘,):
+
+![reeve settings](assets/settings.png)
+
+Config is also stored at `~/.config/reeve/config.json`:
 
 - `pollIntervalSeconds` — refresh interval for process status (default: `3.0`)
 - `collapsedEnvironments` — which environment groups are collapsed in the UI
