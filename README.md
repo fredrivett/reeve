@@ -1,4 +1,4 @@
-# reeve
+# [reeve](https://reeve.fredrivett.com)
 
 Keep an eye on your [PM2](https://pm2.keymetrics.io/) processes from the macOS menu bar — live status, CPU, memory, logs, and one-click restart/stop, without keeping a terminal open.
 
