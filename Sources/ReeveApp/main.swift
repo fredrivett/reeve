@@ -71,7 +71,11 @@ struct ReeveApp: App {
             SettingsView()
                 .environmentObject(configService)
                 .onDisappear {
-                    NSApp.setActivationPolicy(.accessory)
+                    // Keep regular activation in standalone-window mode so the
+                    // panel stays visible after Settings closes.
+                    if !LaunchOptions.standaloneWindow {
+                        NSApp.setActivationPolicy(.accessory)
+                    }
                 }
         }
     }
