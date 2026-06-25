@@ -173,25 +173,25 @@ struct PortExtractionTests {
         #expect(try decode(json).port == 8080)
     }
 
-    @Test("Port from GPTZERO_CUSTOM_PORT (int)")
-    func portFromGPTZeroInt() throws {
+    @Test("Port from a *_PORT env var (int)")
+    func portFromSuffixInt() throws {
         let json = """
         {
             "pid": 1, "name": "srv", "pm_id": 0,
             "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "GPTZERO_CUSTOM_PORT": 55001 }
+            "pm2_env": { "status": "online", "SERVER_PORT": 55001 }
         }
         """
         #expect(try decode(json).port == 55001)
     }
 
-    @Test("Port from GPTZERO_CUSTOM_PORT (string)")
-    func portFromGPTZeroString() throws {
+    @Test("Port from a *_PORT env var (string)")
+    func portFromSuffixString() throws {
         let json = """
         {
             "pid": 1, "name": "srv", "pm_id": 0,
             "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "GPTZERO_CUSTOM_PORT": "55002" }
+            "pm2_env": { "status": "online", "HTTP_PORT": "55002" }
         }
         """
         #expect(try decode(json).port == 55002)
@@ -227,22 +227,59 @@ struct PortExtractionTests {
         {
             "pid": 1, "name": "srv", "pm_id": 0,
             "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "args": ["--port", "9000"], "PORT": 4000, "GPTZERO_CUSTOM_PORT": 5000 }
+            "pm2_env": { "status": "online", "args": ["--port", "9000"], "PORT": 4000, "SERVER_PORT": 5000 }
         }
         """
         #expect(try decode(json).port == 9000)
     }
 
-    @Test("GPTZERO_CUSTOM_PORT takes precedence over PORT")
-    func gptzeroPortPrecedence() throws {
+    @Test("A specific *_PORT takes precedence over the generic PORT")
+    func suffixPortPrecedence() throws {
         let json = """
         {
             "pid": 1, "name": "srv", "pm_id": 0,
             "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "PORT": 4000, "GPTZERO_CUSTOM_PORT": 5000 }
+            "pm2_env": { "status": "online", "PORT": 4000, "SERVER_PORT": 5000 }
         }
         """
         #expect(try decode(json).port == 5000)
+    }
+
+    @Test("Multiple *_PORT vars resolve deterministically (alphabetical)")
+    func multipleSuffixPortsDeterministic() throws {
+        let json = """
+        {
+            "pid": 1, "name": "srv", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online", "SERVER_PORT": 5000, "APP_PORT": 6000 }
+        }
+        """
+        // APP_PORT sorts before SERVER_PORT, so it wins regardless of JSON order.
+        #expect(try decode(json).port == 6000)
+    }
+
+    @Test("Keys merely containing 'port' are ignored")
+    func ignoresNonPortKeys() throws {
+        let json = """
+        {
+            "pid": 1, "name": "srv", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online", "SUPPORT_EMAIL": "a@b.com", "EXPORT_DIR": "/tmp" }
+        }
+        """
+        #expect(try decode(json).port == nil)
+    }
+
+    @Test("Non-numeric port value falls back to the next candidate")
+    func nonNumericPortFallback() throws {
+        let json = """
+        {
+            "pid": 1, "name": "srv", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "online", "APP_PORT": "auto", "SERVER_PORT": 7000 }
+        }
+        """
+        #expect(try decode(json).port == 7000)
     }
 
     @Test("No port when none specified")

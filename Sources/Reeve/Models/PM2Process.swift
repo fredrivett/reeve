@@ -104,9 +104,19 @@ public struct PM2Process: Identifiable, Sendable {
 }
 
 // Custom decoding from pm2 jlist JSON — only extracts fields we need.
-// pm2_env contains the full process environment including secrets;
-// we deliberately avoid decoding the entire object.
+// pm2_env contains the full process environment, which can include secrets.
+// We enumerate its key *names* to find port variables but only decode the
+// values of port-shaped keys, so secret values never enter memory.
 extension PM2Process: Decodable {
+    /// Coding key that accepts any string, used to enumerate `pm2_env` keys
+    /// without modelling the whole (secret-bearing) environment.
+    private struct DynamicKey: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
+        init?(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { return nil }
+    }
+
     private enum TopKeys: String, CodingKey {
         case pid, name, monit
         case pmId = "pm_id"
@@ -127,9 +137,6 @@ extension PM2Process: Decodable {
         case createdAt = "created_at"
         case pmOutLogPath = "pm_out_log_path"
         case pmErrLogPath = "pm_err_log_path"
-        // Common port env vars
-        case envPORT = "PORT"
-        case envGPTZeroPort = "GPTZERO_CUSTOM_PORT"
     }
 
     public init(from decoder: Decoder) throws {
@@ -154,20 +161,48 @@ extension PM2Process: Decodable {
         outLogPath = try env.decodeIfPresent(String.self, forKey: .pmOutLogPath) ?? ""
         errLogPath = try env.decodeIfPresent(String.self, forKey: .pmErrLogPath) ?? ""
 
-        // Extract port: first try args (--port N, -p N), then common env vars
+        // Extract port: prefer an explicit `--port`/`-p` arg, then fall back to
+        // any `PORT` or `*_PORT` environment variable.
         let args = try env.decodeIfPresent([String].self, forKey: .args) ?? []
-        let argsJoined = args.joined(separator: " ")
-        let portPattern = try? NSRegularExpression(pattern: #"(?:--port|-p)\s+(\d+)"#)
-        if let match = portPattern?.firstMatch(in: argsJoined, range: NSRange(argsJoined.startIndex..., in: argsJoined)),
-           let range = Range(match.range(at: 1), in: argsJoined),
-           let parsed = Int(argsJoined[range]) {
-            port = parsed
-        } else if let envPort = try env.decodeIfPresent(StringOrInt.self, forKey: .envGPTZeroPort) {
-            port = envPort.intValue
-        } else if let envPort = try env.decodeIfPresent(StringOrInt.self, forKey: .envPORT) {
-            port = envPort.intValue
+        if let argPort = PM2Process.port(fromArgs: args) {
+            port = argPort
         } else {
-            port = nil
+            let envContainer = try top.nestedContainer(keyedBy: DynamicKey.self, forKey: .pm2Env)
+            port = PM2Process.port(fromEnv: envContainer)
         }
+    }
+
+    /// Parse a port from process args, e.g. `--port 3000` or `-p 8080`.
+    private static func port(fromArgs args: [String]) -> Int? {
+        let joined = args.joined(separator: " ")
+        guard let pattern = try? NSRegularExpression(pattern: #"(?:--port|-p)\s+(\d+)"#),
+              let match = pattern.firstMatch(in: joined, range: NSRange(joined.startIndex..., in: joined)),
+              let range = Range(match.range(at: 1), in: joined) else {
+            return nil
+        }
+        return Int(joined[range])
+    }
+
+    /// Find a port among the `pm2_env` keys: the bare `PORT`, or a specific
+    /// suffix like `SERVER_PORT`. A specific `*_PORT` wins over the generic
+    /// `PORT`, with ties broken alphabetically so the result is deterministic
+    /// regardless of JSON key order.
+    private static func port(fromEnv container: KeyedDecodingContainer<DynamicKey>) -> Int? {
+        let portKeys = container.allKeys.filter { key in
+            let upper = key.stringValue.uppercased()
+            return upper == "PORT" || upper.hasSuffix("_PORT")
+        }
+        let ordered = portKeys.sorted { lhs, rhs in
+            let lhsSpecific = lhs.stringValue.uppercased() != "PORT"
+            let rhsSpecific = rhs.stringValue.uppercased() != "PORT"
+            if lhsSpecific != rhsSpecific { return lhsSpecific }
+            return lhs.stringValue < rhs.stringValue
+        }
+        for key in ordered {
+            if let parsed = try? container.decode(StringOrInt.self, forKey: key), let value = parsed.intValue {
+                return value
+            }
+        }
+        return nil
     }
 }
