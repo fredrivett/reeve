@@ -87,9 +87,7 @@ struct ProcessRowView: View {
 
                 // Stats
                 if process.isOnline {
-                    if let port = process.port {
-                        PortLinkText(text: ":\(String(port))", port: port)
-                    }
+                    ProcessPortsView(ports: process.ports)
                     HStack(spacing: 2) {
                         if let samples = pm2Service.metricsHistory.history["\(environment.path):\(process.pmId)"], samples.count > 1 {
                             SparklineView(values: samples.map(\.cpu), color: .blue)

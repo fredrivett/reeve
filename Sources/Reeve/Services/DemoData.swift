@@ -27,7 +27,7 @@ final class DemoData {
         var startedAt: Int64   // pm_uptime, ms — uptime ticks up naturally from here
         let createdAt: Int64   // ms
         var restartCount: Int
-        let port: Int?
+        let ports: [Int]
         let cwd: String
         let crashLoop: Bool     // keep this process perpetually crash-looping
         var lastLog: Date?
@@ -50,7 +50,7 @@ final class DemoData {
                 createdAt: createdAt,
                 outLogPath: "",
                 errLogPath: "",
-                port: port,
+                ports: ports,
                 lastLogModified: lastLog
             )
         }
@@ -186,7 +186,7 @@ final class DemoData {
         // has a default, keeping the call sites terse and readable.
         func proc(_ name: String, _ pmId: Int,
                   cpu: Double = 0, mem: Double = 0,
-                  status: String = "online", port: Int? = nil,
+                  status: String = "online", ports: [Int] = [],
                   age: TimeInterval = 2 * 86_400, started: TimeInterval? = nil,
                   restarts: Int = 0, crash: Bool = false,
                   cwd: String = "", lastLog: Date? = nil) -> Proc {
@@ -203,7 +203,7 @@ final class DemoData {
                 startedAt: online ? ms(started ?? age) : 0,
                 createdAt: ms(age),
                 restartCount: restarts,
-                port: port,
+                ports: ports,
                 cwd: cwd,
                 crashLoop: crash,
                 lastLog: lastLog ?? (online ? recent() : Date(timeIntervalSince1970: now - 600))
@@ -224,7 +224,7 @@ final class DemoData {
             gitInfo: sidetrack("main"),
             error: nil,
             procs: [
-                proc("web", 0, cpu: 12, mem: 184, port: 3000, cwd: main),
+                proc("web", 0, cpu: 12, mem: 184, ports: [3000], cwd: main),
                 proc("worker", 1, cpu: 4, mem: 96, cwd: main),
                 proc("scheduler", 2, status: "stopped", lastLog: Date(timeIntervalSince1970: now - 3600))
             ]
@@ -236,7 +236,7 @@ final class DemoData {
             gitInfo: sidetrack("fredrivett/eng-3338-rate-limiting"),
             error: nil,
             procs: [
-                proc("web", 0, cpu: 18, mem: 206, port: 3010, age: 6 * 3600, cwd: rateLimit),
+                proc("web", 0, cpu: 18, mem: 206, ports: [3010], age: 6 * 3600, cwd: rateLimit),
                 proc("worker", 1, cpu: 6, mem: 112, age: 6 * 3600, cwd: rateLimit),
                 proc("migrations", 2, status: "errored", age: 6 * 3600, restarts: 1, cwd: rateLimit)
             ]
@@ -249,7 +249,7 @@ final class DemoData {
             gitInfo: sidetrack("fredrivett/eng-3401-dark-mode"),
             error: nil,
             procs: [
-                proc("web", 0, cpu: 25, mem: 232, port: 3020, age: 90 * 60, cwd: darkMode),
+                proc("web", 0, cpu: 25, mem: 232, ports: [3020], age: 90 * 60, cwd: darkMode),
                 proc("worker", 1, cpu: 16, mem: 88, age: 3 * 3600, started: 8, restarts: 7, crash: true, cwd: darkMode)
             ]
         )
@@ -262,7 +262,7 @@ final class DemoData {
             gitInfo: GitInfo(repoName: "marketing-site", branch: "main"),
             error: nil,
             procs: [
-                proc("next-dev", 0, cpu: 28, mem: 418, port: 4000, age: 4 * 3600, cwd: marketing)
+                proc("next-dev", 0, cpu: 28, mem: 418, ports: [4000], age: 4 * 3600, cwd: marketing)
             ]
         )
 
