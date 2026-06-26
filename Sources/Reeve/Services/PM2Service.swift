@@ -75,6 +75,9 @@ public class PM2Service: ObservableObject {
             error = nil
         } catch {
             self.error = error.localizedDescription
+            // Mark the first scan complete so the UI shows the error banner
+            // instead of the loading skeleton forever (e.g. pm2 not installed).
+            hasCompletedFirstScan = true
             return
         }
 
