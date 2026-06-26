@@ -120,7 +120,7 @@ struct PM2ProcessDecodingTests {
         #expect(process.createdAt == 0)
         #expect(process.outLogPath == "")
         #expect(process.errLogPath == "")
-        #expect(process.port == nil)
+        #expect(process.ports.isEmpty)
     }
 
     @Test("Decode array of processes")
@@ -144,154 +144,234 @@ struct PM2ProcessDecodingTests {
     }
 }
 
-// MARK: - Port Extraction
+// MARK: - Socket-based Port Resolution
 
-@Suite("Port Extraction")
-struct PortExtractionTests {
+@Suite("Socket Port Resolution")
+struct SocketScannerTests {
 
-    @Test("Port from --port arg")
-    func portFromArgs() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "args": ["--port", "3000"] }
-        }
+    // MARK: lsof parsing
+
+    @Test("Parses pid → ports from lsof -Fpn output")
+    func parsesLsof() {
+        let output = """
+        p73377
+        n127.0.0.1:4321
+        p84604
+        n*:8888
         """
-        #expect(try decode(json).port == 3000)
+        let map = SocketScanner.parseLsof(output)
+        #expect(map[73377] == [4321])
+        #expect(map[84604] == [8888])
     }
 
-    @Test("Port from -p arg")
-    func portFromShortFlag() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "args": ["-p", "8080"] }
-        }
+    @Test("Collapses IPv4 + IPv6 bindings of the same port")
+    func collapsesDualStack() {
+        let output = """
+        p100
+        n*:3000
+        n[::1]:3000
+        n127.0.0.1:3000
         """
-        #expect(try decode(json).port == 8080)
+        #expect(SocketScanner.parseLsof(output)[100] == [3000])
     }
 
-    @Test("Port from a *_PORT env var (int)")
-    func portFromSuffixInt() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "SERVER_PORT": 55001 }
-        }
+    @Test("A process listening on several distinct ports")
+    func multiplePortsPerProcess() {
+        let output = """
+        p200
+        n*:3000
+        n*:9090
         """
-        #expect(try decode(json).port == 55001)
+        #expect(SocketScanner.parseLsof(output)[200] == [3000, 9090])
     }
 
-    @Test("Port from a *_PORT env var (string)")
-    func portFromSuffixString() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "HTTP_PORT": "55002" }
-        }
-        """
-        #expect(try decode(json).port == 55002)
+    @Test("Empty lsof output yields no ports")
+    func emptyLsof() {
+        #expect(SocketScanner.parseLsof("").isEmpty)
     }
 
-    @Test("Port from PORT env var (int)")
-    func portFromPORTInt() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "PORT": 4000 }
-        }
+    @Test("An 'n' line before any 'p' line is ignored")
+    func orphanNameLine() {
+        let output = """
+        n*:3000
+        p500
+        n*:4000
         """
-        #expect(try decode(json).port == 4000)
+        let map = SocketScanner.parseLsof(output)
+        #expect(map.count == 1)
+        #expect(map[500] == [4000])
     }
 
-    @Test("Port from PORT env var (string)")
-    func portFromPORTString() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "PORT": "4001" }
-        }
+    @Test("Non-numeric / wildcard port tails are skipped")
+    func skipsNonNumericPorts() {
+        let output = """
+        p600
+        n*:*
+        n*:5000
         """
-        #expect(try decode(json).port == 4001)
+        #expect(SocketScanner.parseLsof(output)[600] == [5000])
     }
 
-    @Test("Args port takes precedence over env vars")
-    func argsPrecedence() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "args": ["--port", "9000"], "PORT": 4000, "SERVER_PORT": 5000 }
-        }
+    @Test("Unrecognised field tags are ignored")
+    func ignoresOtherFieldTags() {
+        let output = """
+        p700
+        f12
+        TST=LISTEN
+        n*:6000
         """
-        #expect(try decode(json).port == 9000)
+        #expect(SocketScanner.parseLsof(output)[700] == [6000])
     }
 
-    @Test("A specific *_PORT takes precedence over the generic PORT")
-    func suffixPortPrecedence() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "PORT": 4000, "SERVER_PORT": 5000 }
-        }
+    // MARK: ps parsing
+
+    @Test("Parses parent → children from ps output")
+    func parsesPS() {
+        let output = """
+          84570 84001
+          84604 84570
+          84605 84570
         """
-        #expect(try decode(json).port == 5000)
+        let children = SocketScanner.parsePS(output)
+        #expect(children[84570]?.sorted() == [84604, 84605])
+        #expect(children[84001] == [84570])
     }
 
-    @Test("Multiple *_PORT vars resolve deterministically (alphabetical)")
-    func multipleSuffixPortsDeterministic() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "SERVER_PORT": 5000, "APP_PORT": 6000 }
-        }
+    @Test("Garbage / malformed ps lines are skipped")
+    func parsePSSkipsGarbage() {
+        let output = """
+          PID  PPID
+          100  1
+          not a number
+          200  100
         """
-        // APP_PORT sorts before SERVER_PORT, so it wins regardless of JSON order.
-        #expect(try decode(json).port == 6000)
+        let children = SocketScanner.parsePS(output)
+        #expect(children[1] == [100])
+        #expect(children[100] == [200])
+        #expect(children.count == 2)
     }
 
-    @Test("Keys merely containing 'port' are ignored")
-    func ignoresNonPortKeys() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "SUPPORT_EMAIL": "a@b.com", "EXPORT_DIR": "/tmp" }
-        }
-        """
-        #expect(try decode(json).port == nil)
+    // MARK: tree resolution
+
+    @Test("Resolves ports from the process itself")
+    func resolvesOwnPort() {
+        let snap = SocketScanner.Snapshot(portsByPID: [10: [4321]], childrenByPID: [:])
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [4321])
     }
 
-    @Test("Non-numeric port value falls back to the next candidate")
-    func nonNumericPortFallback() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "APP_PORT": "auto", "SERVER_PORT": 7000 }
-        }
-        """
-        #expect(try decode(json).port == 7000)
+    @Test("Resolves a child's port (npm-wrapped server case)")
+    func resolvesChildPort() {
+        // pid 10 = npm wrapper (no socket); its child 11 is the real server.
+        let snap = SocketScanner.Snapshot(
+            portsByPID: [11: [8888]],
+            childrenByPID: [10: [11]]
+        )
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [8888])
     }
 
-    @Test("No port when none specified")
-    func noPort() throws {
-        let json = """
-        {
-            "pid": 1, "name": "srv", "pm_id": 0,
-            "monit": { "memory": 0, "cpu": 0.0 },
-            "pm2_env": { "status": "online", "args": ["--verbose"] }
-        }
-        """
-        #expect(try decode(json).port == nil)
+    @Test("Resolves ports across a deeper descendant chain")
+    func resolvesGrandchildPort() {
+        let snap = SocketScanner.Snapshot(
+            portsByPID: [12: [5000]],
+            childrenByPID: [10: [11], 11: [12]]
+        )
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [5000])
+    }
+
+    @Test("Merges and sorts ports from the whole subtree")
+    func mergesSubtreePorts() {
+        let snap = SocketScanner.Snapshot(
+            portsByPID: [10: [9090], 11: [3000]],
+            childrenByPID: [10: [11]]
+        )
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [3000, 9090])
+    }
+
+    @Test("Filters out known debug/inspector ports")
+    func filtersDebugPorts() {
+        let snap = SocketScanner.Snapshot(portsByPID: [10: [3000, 9229]], childrenByPID: [:])
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [3000])
+    }
+
+    @Test("Filters debug ports and sorts the remainder")
+    func filtersAndSorts() {
+        let snap = SocketScanner.Snapshot(portsByPID: [10: [9090, 3000, 9229]], childrenByPID: [:])
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [3000, 9090])
+    }
+
+    @Test("A process listening on nothing resolves to no ports")
+    func noListeningSockets() {
+        let snap = SocketScanner.Snapshot(portsByPID: [:], childrenByPID: [:])
+        #expect(SocketScanner.ports(forRoot: 10, in: snap).isEmpty)
+    }
+
+    @Test("A non-running process (pid 0) resolves to no ports")
+    func zeroPid() {
+        let snap = SocketScanner.Snapshot(portsByPID: [0: [3000]], childrenByPID: [:])
+        #expect(SocketScanner.ports(forRoot: 0, in: snap).isEmpty)
+    }
+
+    @Test("Cyclic process references terminate")
+    func cyclesTerminate() {
+        // Defensive: a malformed tree where pids reference each other.
+        let snap = SocketScanner.Snapshot(
+            portsByPID: [10: [3000]],
+            childrenByPID: [10: [11], 11: [10]]
+        )
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [3000])
+    }
+}
+
+// MARK: - Port Display
+
+@Suite("Port Display")
+struct PortDisplayTests {
+
+    @Test("No ports shows nothing")
+    func noPorts() {
+        let s = PortDisplay.summarize([])
+        #expect(s.shown.isEmpty)
+        #expect(s.overflow == 0)
+        #expect(s.tooltip == "")
+    }
+
+    @Test("Single port, no overflow badge")
+    func singlePort() {
+        let s = PortDisplay.summarize([3000])
+        #expect(s.shown == [3000])
+        #expect(s.overflow == 0)
+        #expect(s.tooltip == ":3000")
+    }
+
+    @Test("Exactly two ports, no overflow badge")
+    func twoPorts() {
+        let s = PortDisplay.summarize([3000, 9090])
+        #expect(s.shown == [3000, 9090])
+        #expect(s.overflow == 0)
+        #expect(s.tooltip == ":3000 :9090")
+    }
+
+    @Test("Three ports shows two plus +1")
+    func threePorts() {
+        let s = PortDisplay.summarize([6001, 6002, 6003])
+        #expect(s.shown == [6001, 6002])
+        #expect(s.overflow == 1)
+        #expect(s.tooltip == ":6001 :6002 :6003")
+    }
+
+    @Test("Many ports collapse into +N with full tooltip")
+    func manyPorts() {
+        let s = PortDisplay.summarize([8000, 8001, 8002, 8003, 8004])
+        #expect(s.shown == [8000, 8001])
+        #expect(s.overflow == 3)
+        #expect(s.tooltip == ":8000 :8001 :8002 :8003 :8004")
+    }
+
+    @Test("Custom limit is respected")
+    func customLimit() {
+        let s = PortDisplay.summarize([1, 2, 3], limit: 1)
+        #expect(s.shown == [1])
+        #expect(s.overflow == 2)
     }
 }
 

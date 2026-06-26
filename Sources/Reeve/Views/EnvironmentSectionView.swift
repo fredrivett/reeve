@@ -207,7 +207,7 @@ struct EnvironmentSectionView: View {
                     }
 
                     if let portRange = formattedPortRange() {
-                        PortLinkText(text: portRange, port: processes.compactMap(\.port).min())
+                        PortLinkText(text: portRange, port: processes.flatMap(\.ports).min())
                     }
 
                     let totalCPU = processes.filter(\.isOnline).reduce(0.0) { $0 + $1.cpuPercent }
@@ -308,7 +308,7 @@ struct EnvironmentSectionView: View {
     }
 
     private func formattedPortRange() -> String? {
-        let ports = processes.compactMap(\.port).sorted()
+        let ports = processes.flatMap(\.ports).sorted()
         return formatPortRange(from: ports)
     }
 

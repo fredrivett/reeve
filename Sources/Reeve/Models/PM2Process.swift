@@ -1,29 +1,5 @@
 import Foundation
 
-/// Decodes a value that may be a JSON string or number into an Int.
-private enum StringOrInt: Decodable {
-    case string(String)
-    case int(Int)
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let v = try? container.decode(Int.self) {
-            self = .int(v)
-        } else if let v = try? container.decode(String.self) {
-            self = .string(v)
-        } else {
-            throw DecodingError.typeMismatch(StringOrInt.self, .init(codingPath: decoder.codingPath, debugDescription: "Expected String or Int"))
-        }
-    }
-
-    var intValue: Int? {
-        switch self {
-        case .int(let v): return v
-        case .string(let v): return Int(v)
-        }
-    }
-}
-
 public struct PM2Process: Identifiable, Sendable {
     public let pid: Int
     public let name: String
@@ -40,7 +16,11 @@ public struct PM2Process: Identifiable, Sendable {
     public let createdAt: Int64
     public let outLogPath: String
     public let errLogPath: String
-    public let port: Int?
+
+    /// Ports this process (and its child processes) are actively listening on,
+    /// resolved from the OS via `SocketScanner` after decoding. Empty when the
+    /// process isn't serving anything (e.g. a worker, or still booting).
+    public var ports: [Int] = []
 
     /// Most recent modification time of the process's log files (set after decoding).
     public var lastLogModified: Date?
@@ -103,20 +83,11 @@ public struct PM2Process: Identifiable, Sendable {
     }
 }
 
-// Custom decoding from pm2 jlist JSON — only extracts fields we need.
-// pm2_env contains the full process environment, which can include secrets.
-// We enumerate its key *names* to find port variables but only decode the
-// values of port-shaped keys, so secret values never enter memory.
+// Custom decoding from pm2 jlist JSON — only extracts the fields we need.
+// pm2_env contains the full process environment, which can include secrets,
+// so we never enumerate it; ports are resolved separately from the OS via
+// `SocketScanner`.
 extension PM2Process: Decodable {
-    /// Coding key that accepts any string, used to enumerate `pm2_env` keys
-    /// without modelling the whole (secret-bearing) environment.
-    private struct DynamicKey: CodingKey {
-        let stringValue: String
-        var intValue: Int? { nil }
-        init?(stringValue: String) { self.stringValue = stringValue }
-        init?(intValue: Int) { return nil }
-    }
-
     private enum TopKeys: String, CodingKey {
         case pid, name, monit
         case pmId = "pm_id"
@@ -128,7 +99,7 @@ extension PM2Process: Decodable {
     }
 
     private enum EnvKeys: String, CodingKey {
-        case status, namespace, args
+        case status, namespace
         case pmExecPath = "pm_exec_path"
         case pmCwd = "pm_cwd"
         case execMode = "exec_mode"
@@ -160,49 +131,5 @@ extension PM2Process: Decodable {
         createdAt = try env.decodeIfPresent(Int64.self, forKey: .createdAt) ?? 0
         outLogPath = try env.decodeIfPresent(String.self, forKey: .pmOutLogPath) ?? ""
         errLogPath = try env.decodeIfPresent(String.self, forKey: .pmErrLogPath) ?? ""
-
-        // Extract port: prefer an explicit `--port`/`-p` arg, then fall back to
-        // any `PORT` or `*_PORT` environment variable.
-        let args = try env.decodeIfPresent([String].self, forKey: .args) ?? []
-        if let argPort = PM2Process.port(fromArgs: args) {
-            port = argPort
-        } else {
-            let envContainer = try top.nestedContainer(keyedBy: DynamicKey.self, forKey: .pm2Env)
-            port = PM2Process.port(fromEnv: envContainer)
-        }
-    }
-
-    /// Parse a port from process args, e.g. `--port 3000` or `-p 8080`.
-    private static func port(fromArgs args: [String]) -> Int? {
-        let joined = args.joined(separator: " ")
-        guard let pattern = try? NSRegularExpression(pattern: #"(?:--port|-p)\s+(\d+)"#),
-              let match = pattern.firstMatch(in: joined, range: NSRange(joined.startIndex..., in: joined)),
-              let range = Range(match.range(at: 1), in: joined) else {
-            return nil
-        }
-        return Int(joined[range])
-    }
-
-    /// Find a port among the `pm2_env` keys: the bare `PORT`, or a specific
-    /// suffix like `SERVER_PORT`. A specific `*_PORT` wins over the generic
-    /// `PORT`, with ties broken alphabetically so the result is deterministic
-    /// regardless of JSON key order.
-    private static func port(fromEnv container: KeyedDecodingContainer<DynamicKey>) -> Int? {
-        let portKeys = container.allKeys.filter { key in
-            let upper = key.stringValue.uppercased()
-            return upper == "PORT" || upper.hasSuffix("_PORT")
-        }
-        let ordered = portKeys.sorted { lhs, rhs in
-            let lhsSpecific = lhs.stringValue.uppercased() != "PORT"
-            let rhsSpecific = rhs.stringValue.uppercased() != "PORT"
-            if lhsSpecific != rhsSpecific { return lhsSpecific }
-            return lhs.stringValue < rhs.stringValue
-        }
-        for key in ordered {
-            if let parsed = try? container.decode(StringOrInt.self, forKey: key), let value = parsed.intValue {
-                return value
-            }
-        }
-        return nil
     }
 }

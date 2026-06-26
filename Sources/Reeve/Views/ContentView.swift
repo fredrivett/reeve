@@ -346,7 +346,7 @@ public struct ContentView: View {
         let query = filterText.lowercased()
         return processes.filter { process in
             process.name.lowercased().contains(query) ||
-            (process.port.map { String($0).contains(query) } ?? false)
+            process.ports.contains { String($0).contains(query) }
         }
     }
 }

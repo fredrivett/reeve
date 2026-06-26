@@ -110,9 +110,13 @@ public class PM2Service: ObservableObject {
             var gitResults: [String: GitInfo] = [:]
             var errors: [String: String] = [:]
 
+            // One machine-wide snapshot of listening sockets + process tree,
+            // shared (read-only) across all environment fetches below.
+            let sockets = SocketScanner.scan()
+
             DispatchQueue.concurrentPerform(iterations: environmentsToFetch.count) { index in
                 let env = environmentsToFetch[index]
-                let fetchResult = PM2Service.fetchProcessesSync(for: env, using: resolution)
+                let fetchResult = PM2Service.fetchProcessesSync(for: env, using: resolution, sockets: sockets)
 
                 var processes: [PM2Process] = []
                 var errorMessage: String?
@@ -419,7 +423,8 @@ public class PM2Service: ObservableObject {
 
     private nonisolated static func fetchProcessesSync(
         for environment: PM2Environment,
-        using resolution: PM2BinaryResolver.Resolution
+        using resolution: PM2BinaryResolver.Resolution,
+        sockets: SocketScanner.Snapshot
     ) -> FetchResult {
         // If no daemon is running, return empty — don't call pm2 which would spawn one
         guard isDaemonRunning(for: environment) else {
@@ -428,6 +433,10 @@ public class PM2Service: ObservableObject {
         do {
             let data = try runPM2Sync(["jlist"], environment: environment, using: resolution)
             var processes = try JSONDecoder().decode([PM2Process].self, from: data)
+            // Resolve listening ports from the OS snapshot (own pid + descendants)
+            for i in processes.indices {
+                processes[i].ports = SocketScanner.ports(forRoot: processes[i].pid, in: sockets)
+            }
             // Stat log files to determine last activity time
             let fm = FileManager.default
             for i in processes.indices {
