@@ -157,6 +157,10 @@ a:hover {
   border-color: var(--text-dim);
 }
 
+.star-count {
+  font-variant-numeric: tabular-nums;
+}
+
 .reqs {
   margin-top: 28px;
   font-size: 14px;
