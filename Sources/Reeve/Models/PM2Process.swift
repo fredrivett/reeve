@@ -131,6 +131,5 @@ extension PM2Process: Decodable {
         createdAt = try env.decodeIfPresent(Int64.self, forKey: .createdAt) ?? 0
         outLogPath = try env.decodeIfPresent(String.self, forKey: .pmOutLogPath) ?? ""
         errLogPath = try env.decodeIfPresent(String.self, forKey: .pmErrLogPath) ?? ""
-        // `ports` is resolved from the OS after decoding (see SocketScanner).
     }
 }

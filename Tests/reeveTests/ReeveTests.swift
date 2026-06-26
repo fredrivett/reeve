@@ -190,6 +190,39 @@ struct SocketScannerTests {
         #expect(SocketScanner.parseLsof("").isEmpty)
     }
 
+    @Test("An 'n' line before any 'p' line is ignored")
+    func orphanNameLine() {
+        let output = """
+        n*:3000
+        p500
+        n*:4000
+        """
+        let map = SocketScanner.parseLsof(output)
+        #expect(map.count == 1)
+        #expect(map[500] == [4000])
+    }
+
+    @Test("Non-numeric / wildcard port tails are skipped")
+    func skipsNonNumericPorts() {
+        let output = """
+        p600
+        n*:*
+        n*:5000
+        """
+        #expect(SocketScanner.parseLsof(output)[600] == [5000])
+    }
+
+    @Test("Unrecognised field tags are ignored")
+    func ignoresOtherFieldTags() {
+        let output = """
+        p700
+        f12
+        TST=LISTEN
+        n*:6000
+        """
+        #expect(SocketScanner.parseLsof(output)[700] == [6000])
+    }
+
     // MARK: ps parsing
 
     @Test("Parses parent → children from ps output")
@@ -202,6 +235,20 @@ struct SocketScannerTests {
         let children = SocketScanner.parsePS(output)
         #expect(children[84570]?.sorted() == [84604, 84605])
         #expect(children[84001] == [84570])
+    }
+
+    @Test("Garbage / malformed ps lines are skipped")
+    func parsePSSkipsGarbage() {
+        let output = """
+          PID  PPID
+          100  1
+          not a number
+          200  100
+        """
+        let children = SocketScanner.parsePS(output)
+        #expect(children[1] == [100])
+        #expect(children[100] == [200])
+        #expect(children.count == 2)
     }
 
     // MARK: tree resolution
@@ -246,6 +293,12 @@ struct SocketScannerTests {
         #expect(SocketScanner.ports(forRoot: 10, in: snap) == [3000])
     }
 
+    @Test("Filters debug ports and sorts the remainder")
+    func filtersAndSorts() {
+        let snap = SocketScanner.Snapshot(portsByPID: [10: [9090, 3000, 9229]], childrenByPID: [:])
+        #expect(SocketScanner.ports(forRoot: 10, in: snap) == [3000, 9090])
+    }
+
     @Test("A process listening on nothing resolves to no ports")
     func noListeningSockets() {
         let snap = SocketScanner.Snapshot(portsByPID: [:], childrenByPID: [:])
@@ -266,6 +319,59 @@ struct SocketScannerTests {
             childrenByPID: [10: [11], 11: [10]]
         )
         #expect(SocketScanner.ports(forRoot: 10, in: snap) == [3000])
+    }
+}
+
+// MARK: - Port Display
+
+@Suite("Port Display")
+struct PortDisplayTests {
+
+    @Test("No ports shows nothing")
+    func noPorts() {
+        let s = PortDisplay.summarize([])
+        #expect(s.shown.isEmpty)
+        #expect(s.overflow == 0)
+        #expect(s.tooltip == "")
+    }
+
+    @Test("Single port, no overflow badge")
+    func singlePort() {
+        let s = PortDisplay.summarize([3000])
+        #expect(s.shown == [3000])
+        #expect(s.overflow == 0)
+        #expect(s.tooltip == ":3000")
+    }
+
+    @Test("Exactly two ports, no overflow badge")
+    func twoPorts() {
+        let s = PortDisplay.summarize([3000, 9090])
+        #expect(s.shown == [3000, 9090])
+        #expect(s.overflow == 0)
+        #expect(s.tooltip == ":3000 :9090")
+    }
+
+    @Test("Three ports shows two plus +1")
+    func threePorts() {
+        let s = PortDisplay.summarize([6001, 6002, 6003])
+        #expect(s.shown == [6001, 6002])
+        #expect(s.overflow == 1)
+        #expect(s.tooltip == ":6001 :6002 :6003")
+    }
+
+    @Test("Many ports collapse into +N with full tooltip")
+    func manyPorts() {
+        let s = PortDisplay.summarize([8000, 8001, 8002, 8003, 8004])
+        #expect(s.shown == [8000, 8001])
+        #expect(s.overflow == 3)
+        #expect(s.tooltip == ":8000 :8001 :8002 :8003 :8004")
+    }
+
+    @Test("Custom limit is respected")
+    func customLimit() {
+        let s = PortDisplay.summarize([1, 2, 3], limit: 1)
+        #expect(s.shown == [1])
+        #expect(s.overflow == 2)
     }
 }
 
