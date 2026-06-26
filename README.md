@@ -32,6 +32,17 @@ brew install --cask fredrivett/tap/reeve
 
 This handles everything for you, including clearing the quarantine flag so the app opens without any Gatekeeper warnings.
 
+### Upgrading
+
+To upgrade later, first trust the tap once (a [Homebrew 6.0.0+ requirement](https://docs.brew.sh/Tap-Trust) for all third-party taps), then upgrade as usual:
+
+```bash
+brew trust fredrivett/tap
+brew upgrade reeve
+```
+
+You only need to run `brew trust` once — future upgrades work normally afterwards.
+
 ### Installing the DMG directly
 
 reeve is **not yet code-signed or notarized** (that needs a paid Apple Developer account, which is a potential follow-up). The Homebrew cask handles this automatically, so it's the smoothest path. If you download the `.dmg` from the [releases page](https://github.com/fredrivett/reeve/releases) instead, macOS Gatekeeper will warn that the app is from an unidentified developer. To open it:
