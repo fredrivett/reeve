@@ -319,9 +319,10 @@ struct EnvironmentSectionView: View {
     }
 
     private static func parseErrorMessage(_ message: String, pathTooLong: Bool = false) -> ParsedError {
-        // Path over the macOS socket limit: the daemon can never run, and no
-        // command should be issued against it. Explain the real cause rather
-        // than the generic socket error, and point at the durable fix.
+        // Path over the macOS socket limit: the daemon can never run, so reeve
+        // won't poll it with pm2 (that would auto-spawn a broken daemon).
+        // Explain the real cause and durable fix. "Kill daemon" is still
+        // offered — it SIGKILLs any lingering zombie directly (no pm2 command).
         if pathTooLong {
             return ParsedError(
                 title: "Workspace path too long",

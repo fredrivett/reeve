@@ -57,9 +57,11 @@ public struct PM2Environment: Identifiable, Hashable, Sendable {
         PM2Environment.socketPathTooLong(forHome: path)
     }
 
-    /// Pure length check, extracted for testing.
+    /// Pure length check, extracted for testing. Measures UTF-8 bytes because
+    /// `sun_path` is a fixed 104-byte C buffer — a multi-byte character in the
+    /// path costs more than one byte, so grapheme count would under-report.
     static func socketPathTooLong(forHome home: String) -> Bool {
-        (home + longestSocketPathComponent).count > maxSocketPathLength
+        (home + longestSocketPathComponent).utf8.count > maxSocketPathLength
     }
 
     public init(path: String, isActive: Bool = false) {

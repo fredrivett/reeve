@@ -1404,6 +1404,15 @@ struct SocketPathTooLongTests {
         let env = PM2Environment(path: home(length: 200))
         #expect(env.socketPathTooLong == true)
     }
+
+    @Test("Measures UTF-8 bytes, not grapheme count")
+    func countsBytesNotGraphemes() {
+        // 1 + 60 + 20 = 81 graphemes -> +16 = 97, under 104 by grapheme count,
+        // but 1 + 60 + 20*4 = 141 UTF-8 bytes -> well over the 104-byte limit.
+        let h = "/" + String(repeating: "a", count: 60) + String(repeating: "🚀", count: 20)
+        #expect((h + "/interactor.sock").count <= 104)          // grapheme count would pass
+        #expect(PM2Environment.socketPathTooLong(forHome: h) == true)  // byte count correctly fails
+    }
 }
 
 // MARK: - Address-in-use log detection
