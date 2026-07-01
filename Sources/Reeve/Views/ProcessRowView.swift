@@ -194,7 +194,11 @@ struct ProcessRowView: View {
                     freePortResetTask = Task {
                         try? await Task.sleep(nanoseconds: 3_000_000_000)
                         if !Task.isCancelled {
-                            await MainActor.run { confirmingFreePort = nil }
+                            // Only clear the confirmation this timer armed — a
+                            // newer confirmation for a different port must stand.
+                            await MainActor.run {
+                                if confirmingFreePort == port { confirmingFreePort = nil }
+                            }
                         }
                     }
                 }
