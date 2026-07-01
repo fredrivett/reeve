@@ -266,6 +266,43 @@ public class PM2Service: ObservableObject {
         await refresh()
     }
 
+    /// Kill whatever process is currently listening on `port`, freeing it for a
+    /// process that's failing to bind ("Address already in use"). Kills the
+    /// listening pid(s) directly via the OS — the holder may be a pm2 process in
+    /// another environment, an orphan, or an unrelated app.
+    public func freePort(_ port: Int) async {
+        if let demo {
+            demo.freePort(port)
+            applyDemoSnapshot(tick: false)
+            return
+        }
+        await Task.detached {
+            PM2Service.killListeners(onPort: port)
+        }.value
+        await refresh()
+    }
+
+    /// Find and SIGKILL every process listening on `port`, excluding reeve itself.
+    private nonisolated static func killListeners(onPort port: Int) {
+        let lsof = Process()
+        let pipe = Pipe()
+        lsof.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+        // -t: pid-only output, restricted to the LISTEN socket on this TCP port.
+        lsof.arguments = ["-nP", "-t", "-iTCP:\(port)", "-sTCP:LISTEN"]
+        lsof.standardOutput = pipe
+        lsof.standardError = FileHandle.nullDevice
+        guard (try? lsof.run()) != nil else { return }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        lsof.waitUntilExit()
+
+        let selfPID = getpid()
+        guard let output = String(data: data, encoding: .utf8) else { return }
+        for line in output.split(separator: "\n") {
+            guard let pid = pid_t(line.trimmingCharacters(in: .whitespaces)), pid != selfPID else { continue }
+            kill(pid, SIGKILL)
+        }
+    }
+
     /// Finds and kills all PM2 God Daemon processes associated with a PM2_HOME directory.
     private nonisolated static func forceKillDaemon(for environment: PM2Environment) {
         let pm2Home = environment.path
@@ -432,7 +469,7 @@ public class PM2Service: ObservableObject {
         }
         do {
             let data = try runPM2Sync(["jlist"], environment: environment, using: resolution)
-            var processes = try JSONDecoder().decode([PM2Process].self, from: data)
+            var processes = try JSONDecoder().decode([PM2Process].self, from: extractJSON(from: data))
             // Resolve listening ports from the OS snapshot (own pid + descendants)
             for i in processes.indices {
                 processes[i].ports = SocketScanner.ports(forRoot: processes[i].pid, in: sockets)
@@ -451,10 +488,71 @@ public class PM2Service: ObservableObject {
                 }
                 processes[i].lastLogModified = newest
             }
+            // Detect port bind conflicts: the process wants a port it isn't
+            // serving, something else is holding that port, and its error log
+            // recently said so ("Address already in use").
+            for i in processes.indices {
+                guard let port = processes[i].desiredPort,
+                      !processes[i].ports.contains(port),
+                      SocketScanner.isPortListening(port, in: sockets),
+                      errorLogReportsAddressInUse(atPath: processes[i].errLogPath)
+                else { continue }
+                processes[i].portConflict = port
+            }
             return .success(processes)
         } catch {
             return .failure(error.localizedDescription)
         }
+    }
+
+    /// Extract the JSON payload from raw pm2 stdout.
+    ///
+    /// pm2 prepends human-readable notices to stdout — most notably a colored
+    /// "In-memory PM2 is out-of-date" banner when a daemon's in-memory version
+    /// differs from the local CLI. That preamble makes the buffer invalid JSON
+    /// and breaks decoding, so we trim to the first JSON bracket before handing
+    /// it to `JSONDecoder`. The banner is ANSI-colored, so its own '[' bytes are
+    /// preceded by the ESC (0x1B) byte of a CSI escape — we skip those and stop
+    /// at the first real JSON bracket. Returns the input unchanged if none is
+    /// found, so decode errors stay meaningful.
+    nonisolated static func extractJSON(from data: Data) -> Data {
+        let esc: UInt8 = 0x1B          // ESC — starts an ANSI escape sequence
+        let openBracket: UInt8 = 0x5B  // [
+        let openBrace: UInt8 = 0x7B    // {
+        let bytes = [UInt8](data)
+        for i in bytes.indices where bytes[i] == openBracket || bytes[i] == openBrace {
+            // A '[' immediately after ESC belongs to an ANSI color code, not JSON.
+            if bytes[i] == openBracket && i > 0 && bytes[i - 1] == esc { continue }
+            return Data(bytes[i...])
+        }
+        return data
+    }
+
+    /// Whether `text` (a chunk of an error log) reports a port bind failure.
+    /// Covers the common phrasings across Node (EADDRINUSE), Python/errno
+    /// (Errno 48), and the shared "address already in use" message.
+    nonisolated static func logReportsAddressInUse(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("address already in use")
+            || lower.contains("eaddrinuse")
+            || lower.contains("errno 48")
+    }
+
+    /// Read the tail of an error-log file and check for a bind-conflict message.
+    /// Only the last few KB are read, so this stays cheap on the poll loop.
+    private nonisolated static func errorLogReportsAddressInUse(atPath path: String) -> Bool {
+        guard !path.isEmpty, let handle = FileHandle(forReadingAtPath: path) else { return false }
+        defer { try? handle.close() }
+        let tailBytes: UInt64 = 8192
+        if let size = try? handle.seekToEnd(), size > tailBytes {
+            try? handle.seek(toOffset: size - tailBytes)
+        } else {
+            try? handle.seek(toOffset: 0)
+        }
+        guard let data = try? handle.readToEnd(), let text = String(data: data, encoding: .utf8) else {
+            return false
+        }
+        return logReportsAddressInUse(text)
     }
 
     private nonisolated static func runPM2Sync(

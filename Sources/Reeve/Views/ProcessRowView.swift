@@ -9,6 +9,8 @@ struct ProcessRowView: View {
     @State private var isActing = false
     @State private var showCrashPopover = false
     @State private var copied = false
+    @State private var confirmingFreePort = false
+    @State private var freePortResetTask: Task<Void, Never>?
 
     private static let tooltipFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -146,11 +148,77 @@ struct ProcessRowView: View {
                 .disabled(isActing)
             }
 
+            if let port = process.portConflict {
+                portConflictBanner(port: port)
+            }
+
             if showLogs {
                 LogPanelView(process: process, environment: environment)
             }
         }
         .padding(.vertical, 3)
+    }
+
+    /// Shown when a process is failing to bind its port because something else
+    /// holds it. Offers a confirm-then-kill action to free the port.
+    @ViewBuilder
+    private func portConflictBanner(port: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(.orange)
+                Text("Port :\(String(port)) already in use")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary.opacity(0.8))
+            }
+            Text("Another process is holding this port.")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+
+            Button {
+                if confirmingFreePort {
+                    confirmingFreePort = false
+                    freePortResetTask?.cancel()
+                    performAction {
+                        await pm2Service.freePort(port)
+                        await pm2Service.restart(process: process, environment: environment)
+                    }
+                } else {
+                    confirmingFreePort = true
+                    freePortResetTask?.cancel()
+                    freePortResetTask = Task {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        if !Task.isCancelled {
+                            await MainActor.run { confirmingFreePort = false }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 8))
+                    Text(confirmingFreePort ? "Confirm free port :\(String(port)) and restart service?" : "Free port :\(String(port)) and restart service")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.orange.opacity(0.15))
+                .cornerRadius(4)
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.orange)
+            .disabled(isActing)
+            .help(confirmingFreePort ? "Click again to confirm" : "Kill whatever is listening on :\(String(port)), then restart this process")
+            .onHover { hovering in
+                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(Color.orange.opacity(0.08))
+        .cornerRadius(6)
     }
 
     private func crashLoopPrompt(process: PM2Process, environment: PM2Environment) -> String {

@@ -51,6 +51,13 @@ struct SocketScanner {
         return found.subtracting(ignoredPorts).sorted()
     }
 
+    /// True when any process on the machine is currently listening on `port`.
+    /// Used to confirm a bind conflict is live (someone is holding the port)
+    /// before surfacing it — so the banner clears itself once the squatter goes.
+    static func isPortListening(_ port: Int, in snapshot: Snapshot) -> Bool {
+        snapshot.portsByPID.values.contains { $0.contains(port) }
+    }
+
     // MARK: - Parsing (pure, unit-tested)
 
     /// Parse `lsof -FpnL`-style field output into a pid → listening-ports map.
