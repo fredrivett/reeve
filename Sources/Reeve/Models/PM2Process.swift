@@ -149,11 +149,11 @@ extension PM2Process: Decodable {
         // named env key is read — never the full environment (secrets).
         let args = try env.decodeIfPresent([String].self, forKey: .args) ?? []
         // PORT may be encoded as a string or a number depending on the launcher.
-        var portEnv = try? env.decodeIfPresent(String.self, forKey: .port)
+        var portEnv = (try? env.decodeIfPresent(String.self, forKey: .port)).flatMap { $0 }
         if portEnv == nil, let portInt = try? env.decodeIfPresent(Int.self, forKey: .port) {
             portEnv = String(portInt)
         }
-        desiredPort = PM2Process.parsePort(fromArgs: args, portEnv: portEnv ?? nil)
+        desiredPort = PM2Process.parsePort(fromArgs: args, portEnv: portEnv)
     }
 
     /// Extract a bind port from pm2 launch args, falling back to a `PORT` env
@@ -182,7 +182,7 @@ extension PM2Process: Decodable {
                let port = validPort(next[next.index(after: colon)...]) {
                 return port
             }
-            if (arg.hasPrefix("--bind=") || arg.hasPrefix("-b=")),
+            if arg.hasPrefix("--bind=") || arg.hasPrefix("-b="),
                let eq = arg.firstIndex(of: "=") {
                 let value = arg[arg.index(after: eq)...]
                 if let colon = value.lastIndex(of: ":"), let port = validPort(value[value.index(after: colon)...]) {
