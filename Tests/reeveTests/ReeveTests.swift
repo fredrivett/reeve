@@ -1242,3 +1242,146 @@ struct NormalizationTests {
         #expect(result == [0.5, 0.5, 0.5])
     }
 }
+
+// MARK: - pm2 stdout JSON extraction
+
+@Suite("PM2Service.extractJSON")
+struct ExtractJSONTests {
+
+    private func string(_ data: Data) -> String {
+        String(data: data, encoding: .utf8)!
+    }
+
+    @Test("Pure JSON array is returned unchanged")
+    func pureJSON() {
+        let json = #"[{"pid":1}]"#
+        let result = PM2Service.extractJSON(from: Data(json.utf8))
+        #expect(string(result) == json)
+    }
+
+    @Test("Strips the ANSI-colored out-of-date banner before the JSON")
+    func stripsVersionBanner() throws {
+        // Mirrors real `pm2 jlist` stdout when the in-memory daemon version
+        // differs from the local CLI: a leading blank line, ANSI-colored
+        // ">>>>" notices, then the JSON array on its own line.
+        let esc = "\u{1B}"
+        let banner = """
+        \n\(esc)[31m\(esc)[1m>>>> In-memory PM2 is out-of-date, do:\(esc)[22m\(esc)[39m
+        \(esc)[31m\(esc)[1m>>>> $ pm2 update\(esc)[22m\(esc)[39m
+        In memory PM2 version: \(esc)[34m\(esc)[1m7.0.1\(esc)[22m\(esc)[39m
+        Local PM2 version: \(esc)[34m\(esc)[1m7.0.3\(esc)[22m\(esc)[39m\n\n
+        """
+        let json = #"[{"pid":260,"name":"web","pm_id":0,"monit":{"memory":100,"cpu":0},"pm2_env":{"status":"online"}}]"#
+        let result = PM2Service.extractJSON(from: Data((banner + json).utf8))
+        #expect(string(result) == json)
+        // And the trimmed payload decodes cleanly.
+        let procs = try JSONDecoder().decode([PM2Process].self, from: result)
+        #expect(procs.count == 1)
+        #expect(procs[0].name == "web")
+    }
+
+    @Test("Empty JSON array after a banner is preserved")
+    func emptyArrayAfterBanner() {
+        let esc = "\u{1B}"
+        let raw = "\(esc)[31mnotice\(esc)[39m\n[]"
+        let result = PM2Service.extractJSON(from: Data(raw.utf8))
+        #expect(string(result) == "[]")
+    }
+
+    @Test("Returns input unchanged when no JSON bracket is present")
+    func noBracket() {
+        let raw = "pm2 daemon not responding"
+        let result = PM2Service.extractJSON(from: Data(raw.utf8))
+        #expect(string(result) == raw)
+    }
+}
+
+// MARK: - Bind port parsing
+
+@Suite("PM2Process.parsePort")
+struct ParsePortTests {
+
+    @Test("uvicorn --host --port form")
+    func uvicornForm() {
+        let args = ["src.scripts.asgi:app", "--host", "0.0.0.0", "--port", "5008", "--workers", "2"]
+        #expect(PM2Process.parsePort(fromArgs: args) == 5008)
+    }
+
+    @Test("hypercorn/gunicorn --bind host:port form")
+    func bindForm() {
+        let args = ["--workers", "2", "--bind", "0.0.0.0:5004", "src.scripts.asgi:app"]
+        #expect(PM2Process.parsePort(fromArgs: args) == 5004)
+    }
+
+    @Test("short -p flag")
+    func shortFlag() {
+        #expect(PM2Process.parsePort(fromArgs: ["-p", "3000"]) == 3000)
+    }
+
+    @Test("--port=N equals form")
+    func equalsForm() {
+        #expect(PM2Process.parsePort(fromArgs: ["--port=8080"]) == 8080)
+    }
+
+    @Test("-b=host:port equals form")
+    func bindEqualsForm() {
+        #expect(PM2Process.parsePort(fromArgs: ["-b=127.0.0.1:9000"]) == 9000)
+    }
+
+    @Test("--bind :port with no host")
+    func bindNoHost() {
+        #expect(PM2Process.parsePort(fromArgs: ["--bind", ":5555"]) == 5555)
+    }
+
+    @Test("Falls back to PORT env when args have no port")
+    func portEnvFallback() {
+        #expect(PM2Process.parsePort(fromArgs: ["server.js"], portEnv: "4321") == 4321)
+    }
+
+    @Test("Args take precedence over PORT env")
+    func argsBeatEnv() {
+        #expect(PM2Process.parsePort(fromArgs: ["--port", "5008"], portEnv: "9999") == 5008)
+    }
+
+    @Test("No port anywhere returns nil")
+    func noPort() {
+        #expect(PM2Process.parsePort(fromArgs: ["worker.js", "--workers", "2"]) == nil)
+    }
+
+    @Test("Out-of-range port is rejected")
+    func outOfRange() {
+        #expect(PM2Process.parsePort(fromArgs: ["--port", "99999"]) == nil)
+        #expect(PM2Process.parsePort(fromArgs: ["--port", "0"]) == nil)
+    }
+
+    @Test("Non-numeric port value is ignored")
+    func nonNumeric() {
+        #expect(PM2Process.parsePort(fromArgs: ["--port", "auto"]) == nil)
+    }
+}
+
+// MARK: - Address-in-use log detection
+
+@Suite("PM2Service.logReportsAddressInUse")
+struct AddressInUseTests {
+
+    @Test("Detects Python errno phrasing")
+    func pythonErrno() {
+        #expect(PM2Service.logReportsAddressInUse("ERROR:    [Errno 48] Address already in use"))
+    }
+
+    @Test("Detects Node EADDRINUSE")
+    func nodeEaddrinuse() {
+        #expect(PM2Service.logReportsAddressInUse("Error: listen EADDRINUSE: address already in use :::3000"))
+    }
+
+    @Test("Case-insensitive")
+    func caseInsensitive() {
+        #expect(PM2Service.logReportsAddressInUse("ADDRESS ALREADY IN USE"))
+    }
+
+    @Test("Unrelated log lines are not flagged")
+    func unrelated() {
+        #expect(!PM2Service.logReportsAddressInUse("INFO: Application startup complete on port 5008"))
+    }
+}

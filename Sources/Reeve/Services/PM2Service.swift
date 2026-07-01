@@ -266,6 +266,43 @@ public class PM2Service: ObservableObject {
         await refresh()
     }
 
+    /// Kill whatever process is currently listening on `port`, freeing it for a
+    /// process that's failing to bind ("Address already in use"). Kills the
+    /// listening pid(s) directly via the OS — the holder may be a pm2 process in
+    /// another environment, an orphan, or an unrelated app.
+    public func freePort(_ port: Int) async {
+        if let demo {
+            demo.freePort(port)
+            applyDemoSnapshot(tick: false)
+            return
+        }
+        await Task.detached {
+            PM2Service.killListeners(onPort: port)
+        }.value
+        await refresh()
+    }
+
+    /// Find and SIGKILL every process listening on `port`, excluding reeve itself.
+    private nonisolated static func killListeners(onPort port: Int) {
+        let lsof = Process()
+        let pipe = Pipe()
+        lsof.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+        // -t: pid-only output, restricted to the LISTEN socket on this TCP port.
+        lsof.arguments = ["-nP", "-t", "-iTCP:\(port)", "-sTCP:LISTEN"]
+        lsof.standardOutput = pipe
+        lsof.standardError = FileHandle.nullDevice
+        guard (try? lsof.run()) != nil else { return }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        lsof.waitUntilExit()
+
+        let selfPID = getpid()
+        guard let output = String(data: data, encoding: .utf8) else { return }
+        for line in output.split(separator: "\n") {
+            guard let pid = pid_t(line.trimmingCharacters(in: .whitespaces)), pid != selfPID else { continue }
+            kill(pid, SIGKILL)
+        }
+    }
+
     /// Finds and kills all PM2 God Daemon processes associated with a PM2_HOME directory.
     private nonisolated static func forceKillDaemon(for environment: PM2Environment) {
         let pm2Home = environment.path
@@ -432,7 +469,7 @@ public class PM2Service: ObservableObject {
         }
         do {
             let data = try runPM2Sync(["jlist"], environment: environment, using: resolution)
-            var processes = try JSONDecoder().decode([PM2Process].self, from: data)
+            var processes = try JSONDecoder().decode([PM2Process].self, from: extractJSON(from: data))
             // Resolve listening ports from the OS snapshot (own pid + descendants)
             for i in processes.indices {
                 processes[i].ports = SocketScanner.ports(forRoot: processes[i].pid, in: sockets)
@@ -450,6 +487,17 @@ public class PM2Service: ObservableObject {
                     }
                 }
                 processes[i].lastLogModified = newest
+            }
+            // Detect port bind conflicts: the process wants a port it isn't
+            // serving, something else is holding that port, and its error log
+            // recently said so ("Address already in use").
+            for i in processes.indices {
+                guard let port = processes[i].desiredPort,
+                      !processes[i].ports.contains(port),
+                      SocketScanner.isPortListening(port, in: sockets),
+                      errorLogReportsAddressInUse(atPath: processes[i].errLogPath)
+                else { continue }
+                processes[i].portConflict = port
             }
             return .success(processes)
         } catch {

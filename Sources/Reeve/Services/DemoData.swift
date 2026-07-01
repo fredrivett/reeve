@@ -31,6 +31,7 @@ final class DemoData {
         let cwd: String
         let crashLoop: Bool     // keep this process perpetually crash-looping
         var lastLog: Date?
+        var portConflict: Int?  // failing to bind this port ("Address already in use")
 
         func snapshot() -> PM2Process {
             let online = status == "online"
@@ -50,7 +51,9 @@ final class DemoData {
                 createdAt: createdAt,
                 outLogPath: "",
                 errLogPath: "",
+                desiredPort: portConflict,
                 ports: ports,
+                portConflict: portConflict,
                 lastLogModified: lastLog
             )
         }
@@ -154,6 +157,19 @@ final class DemoData {
         envs[i].procs = []
     }
 
+    /// Simulate freeing a port: any process that was blocked waiting for it
+    /// clears its conflict and comes online.
+    func freePort(_ port: Int) {
+        for i in envs.indices {
+            for j in envs[i].procs.indices where envs[i].procs[j].portConflict == port {
+                envs[i].procs[j].portConflict = nil
+                envs[i].procs[j].status = "online"
+                envs[i].procs[j].startedAt = DemoData.nowMs()
+                envs[i].procs[j].lastLog = Date()
+            }
+        }
+    }
+
     func clearEnvironment(envPath: String) {
         envs.removeAll { $0.path == envPath }
     }
@@ -189,7 +205,7 @@ final class DemoData {
                   status: String = "online", ports: [Int] = [],
                   age: TimeInterval = 2 * 86_400, started: TimeInterval? = nil,
                   restarts: Int = 0, crash: Bool = false,
-                  cwd: String = "", lastLog: Date? = nil) -> Proc {
+                  cwd: String = "", lastLog: Date? = nil, portConflict: Int? = nil) -> Proc {
             let online = status == "online"
             return Proc(
                 pid: online ? 4000 + pmId * 7 + 13 : 0,
@@ -206,7 +222,8 @@ final class DemoData {
                 ports: ports,
                 cwd: cwd,
                 crashLoop: crash,
-                lastLog: lastLog ?? (online ? recent() : Date(timeIntervalSince1970: now - 600))
+                lastLog: lastLog ?? (online ? recent() : Date(timeIntervalSince1970: now - 600)),
+                portConflict: portConflict
             )
         }
 
@@ -250,7 +267,9 @@ final class DemoData {
             error: nil,
             procs: [
                 proc("web", 0, cpu: 25, mem: 232, ports: [3020], age: 90 * 60, cwd: darkMode),
-                proc("worker", 1, cpu: 16, mem: 88, age: 3 * 3600, started: 8, restarts: 7, crash: true, cwd: darkMode)
+                proc("worker", 1, cpu: 16, mem: 88, age: 3 * 3600, started: 8, restarts: 7, crash: true, cwd: darkMode),
+                // Preview server can't bind :3000 — the main workspace's web holds it.
+                proc("web-preview", 2, status: "errored", age: 90 * 60, restarts: 4, cwd: darkMode, portConflict: 3000)
             ]
         )
 
