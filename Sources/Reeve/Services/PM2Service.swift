@@ -440,6 +440,11 @@ public class PM2Service: ObservableObject {
 
     // MARK: - Private
 
+    /// Sentinel error stored for a workspace whose socket path exceeds the macOS
+    /// limit. The UI recognises this case from `PM2Environment.socketPathTooLong`
+    /// and renders a tailored banner rather than the generic daemon error.
+    nonisolated static let socketPathTooLongError = "PM2_HOME socket path exceeds the macOS 104-character limit"
+
     enum FetchResult: Sendable {
         case success([PM2Process])
         case failure(String)
@@ -463,6 +468,11 @@ public class PM2Service: ObservableObject {
         using resolution: PM2BinaryResolver.Resolution,
         sockets: SocketScanner.Snapshot
     ) -> FetchResult {
+        // Socket path too long for macOS: any pm2 command auto-spawns a daemon
+        // that instantly breaks (EINVAL), so never run one — just report it.
+        guard !environment.socketPathTooLong else {
+            return .failure(PM2Service.socketPathTooLongError)
+        }
         // If no daemon is running, return empty — don't call pm2 which would spawn one
         guard isDaemonRunning(for: environment) else {
             return .success([])

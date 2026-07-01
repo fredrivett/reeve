@@ -54,7 +54,7 @@ struct EnvironmentSectionView: View {
     var body: some View {
         DisclosureGroup(isExpanded: isExpanded) {
             if let errorMessage {
-                let parsed = Self.parseErrorMessage(errorMessage)
+                let parsed = Self.parseErrorMessage(errorMessage, pathTooLong: environment.socketPathTooLong)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -318,7 +318,18 @@ struct EnvironmentSectionView: View {
         let suggestKill: Bool
     }
 
-    private static func parseErrorMessage(_ message: String) -> ParsedError {
+    private static func parseErrorMessage(_ message: String, pathTooLong: Bool = false) -> ParsedError {
+        // Path over the macOS socket limit: the daemon can never run, and no
+        // command should be issued against it. Explain the real cause rather
+        // than the generic socket error, and point at the durable fix.
+        if pathTooLong {
+            return ParsedError(
+                title: "Workspace path too long",
+                detail: "This workspace's path exceeds macOS's 104-character limit for PM2 sockets, so its daemon can't run. Recreate the workspace with a shorter name.",
+                suggestKill: true
+            )
+        }
+
         let lower = message.lowercased()
 
         // Socket connection errors — daemon is broken/zombie
