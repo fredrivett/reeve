@@ -15,6 +15,7 @@ Keep an eye on your [PM2](https://pm2.keymetrics.io/) processes from the macOS m
 - 🗂️ **Multiple environments** — automatically discovers all PM2 workspaces (`~/.pm2`, `~/.pm2-*`)
 - 🔁 **Crash-loop detection** — flags processes that are rapidly restarting and provides debug info
 - 🛟 **Daemon error recovery** — surfaces PM2 daemon errors inline with a one-click kill to clear stuck or duplicate daemons
+- 🔌 **Port conflict rescue** — detects when a process can't bind its port because another process holds it, and frees the port and restarts the service in one click
 - 🪵 **Live log streaming** — view process logs in real-time with ANSI color stripping
 - 🔔 **Desktop notifications** — get alerted when processes crash or restart
 - 🔀 **Git repo & branch info** — shows the git repo name and branch for each environment, with configurable prefix/ticket stripping
