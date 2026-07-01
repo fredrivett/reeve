@@ -9,7 +9,10 @@ struct ProcessRowView: View {
     @State private var isActing = false
     @State private var showCrashPopover = false
     @State private var copied = false
-    @State private var confirmingFreePort = false
+    /// The port awaiting a confirm click, or nil when not confirming. Keyed to
+    /// the port (not a Bool) so a poll that changes `portConflict` mid-confirm
+    /// can't let a stale confirmation authorize killing a different port's holder.
+    @State private var confirmingFreePort: Int?
     @State private var freePortResetTask: Task<Void, Never>?
 
     private static let tooltipFormatter: DateFormatter = {
@@ -176,21 +179,22 @@ struct ProcessRowView: View {
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
 
+            let isConfirming = confirmingFreePort == port
             Button {
-                if confirmingFreePort {
-                    confirmingFreePort = false
+                if isConfirming {
+                    confirmingFreePort = nil
                     freePortResetTask?.cancel()
                     performAction {
                         await pm2Service.freePort(port)
                         await pm2Service.restart(process: process, environment: environment)
                     }
                 } else {
-                    confirmingFreePort = true
+                    confirmingFreePort = port
                     freePortResetTask?.cancel()
                     freePortResetTask = Task {
                         try? await Task.sleep(nanoseconds: 3_000_000_000)
                         if !Task.isCancelled {
-                            await MainActor.run { confirmingFreePort = false }
+                            await MainActor.run { confirmingFreePort = nil }
                         }
                     }
                 }
@@ -198,7 +202,7 @@ struct ProcessRowView: View {
                 HStack(spacing: 3) {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 8))
-                    Text(confirmingFreePort ? "Confirm free port :\(String(port)) and restart service?" : "Free port :\(String(port)) and restart service")
+                    Text(isConfirming ? "Confirm free port :\(String(port)) and restart service?" : "Free port :\(String(port)) and restart service")
                         .font(.system(size: 10, weight: .medium))
                 }
                 .padding(.horizontal, 8)
@@ -209,7 +213,7 @@ struct ProcessRowView: View {
             .buttonStyle(.plain)
             .foregroundColor(.orange)
             .disabled(isActing)
-            .help(confirmingFreePort ? "Click again to confirm" : "Kill whatever is listening on :\(String(port)), then restart this process")
+            .help(isConfirming ? "Click again to confirm" : "Kill whatever is listening on :\(String(port)), then restart this process")
             .onHover { hovering in
                 if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
             }

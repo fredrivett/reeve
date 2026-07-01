@@ -27,7 +27,7 @@ final class DemoData {
         var startedAt: Int64   // pm_uptime, ms — uptime ticks up naturally from here
         let createdAt: Int64   // ms
         var restartCount: Int
-        let ports: [Int]
+        var ports: [Int]
         let cwd: String
         let crashLoop: Bool     // keep this process perpetually crash-looping
         var lastLog: Date?
@@ -157,13 +157,23 @@ final class DemoData {
         envs[i].procs = []
     }
 
-    /// Simulate freeing a port: any process that was blocked waiting for it
-    /// clears its conflict and comes online.
+    /// Simulate freeing a port, mirroring the real action: kill whatever holds
+    /// the port (it goes offline and loses the port), then bring the blocked
+    /// process online bound to the now-free port.
     func freePort(_ port: Int) {
+        for i in envs.indices {
+            for j in envs[i].procs.indices {
+                if envs[i].procs[j].portConflict != port, envs[i].procs[j].ports.contains(port) {
+                    envs[i].procs[j].ports.removeAll { $0 == port }
+                    envs[i].procs[j].status = "stopped"
+                }
+            }
+        }
         for i in envs.indices {
             for j in envs[i].procs.indices where envs[i].procs[j].portConflict == port {
                 envs[i].procs[j].portConflict = nil
                 envs[i].procs[j].status = "online"
+                envs[i].procs[j].ports = [port]
                 envs[i].procs[j].startedAt = DemoData.nowMs()
                 envs[i].procs[j].lastLog = Date()
             }
