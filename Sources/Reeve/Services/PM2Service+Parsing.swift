@@ -38,9 +38,20 @@ extension PM2Service {
 
     /// Read the tail of an error-log file and check for a bind-conflict message.
     /// Only the last few KB are read, so this stays cheap on the poll loop.
-    nonisolated static func errorLogReportsAddressInUse(atPath path: String) -> Bool {
+    ///
+    /// `runStartMs` is the process's current run start (`pm_uptime`): when > 0,
+    /// a log last modified *before* that start predates the current run, so its
+    /// bind error is stale and ignored — this stops an old conflict from
+    /// prompting the user to kill whatever legitimately holds the port now.
+    nonisolated static func errorLogReportsAddressInUse(atPath path: String, runStartMs: Int64) -> Bool {
         guard !path.isEmpty, let handle = FileHandle(forReadingAtPath: path) else { return false }
         defer { try? handle.close() }
+        if runStartMs > 0,
+           let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+           let modified = attrs[.modificationDate] as? Date,
+           modified.timeIntervalSince1970 * 1000 < Double(runStartMs) {
+            return false
+        }
         let tailBytes: UInt64 = 8192
         if let size = try? handle.seekToEnd(), size > tailBytes {
             try? handle.seek(toOffset: size - tailBytes)

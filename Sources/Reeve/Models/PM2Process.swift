@@ -173,7 +173,7 @@ extension PM2Process: Decodable {
             if arg == "--port" || arg == "-p", let next, let port = validPort(next[...]) {
                 return port
             }
-            if let eq = arg.firstIndex(of: "="), arg.hasPrefix("--port") {
+            if arg.hasPrefix("--port="), let eq = arg.firstIndex(of: "=") {
                 if let port = validPort(arg[arg.index(after: eq)...]) { return port }
             }
             // Bind targets look like `host:port`, `:port`, or `[::1]:port` — the

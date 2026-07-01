@@ -495,7 +495,7 @@ public class PM2Service: ObservableObject {
                 guard let port = processes[i].desiredPort,
                       !processes[i].ports.contains(port),
                       SocketScanner.isPortListening(port, in: sockets),
-                      errorLogReportsAddressInUse(atPath: processes[i].errLogPath)
+                      errorLogReportsAddressInUse(atPath: processes[i].errLogPath, runStartMs: processes[i].uptime)
                 else { continue }
                 processes[i].portConflict = port
             }

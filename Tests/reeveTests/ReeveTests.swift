@@ -1358,6 +1358,11 @@ struct ParsePortTests {
     func nonNumeric() {
         #expect(PM2Process.parsePort(fromArgs: ["--port", "auto"]) == nil)
     }
+
+    @Test("Unrelated --port-prefixed flag is not mistaken for a port")
+    func portPrefixedFlag() {
+        #expect(PM2Process.parsePort(fromArgs: ["--port-range=9000"]) == nil)
+    }
 }
 
 // MARK: - Address-in-use log detection
