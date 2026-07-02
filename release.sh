@@ -2,6 +2,15 @@
 # Tag a new release and push to trigger the GitHub Actions release workflow
 set -e
 
+# Releases are always cut from an up-to-date main. Guard against tagging the
+# wrong commit: require a clean tree, then fast-forward main to origin. Fail
+# loudly rather than switching over uncommitted work or force-updating over
+# unexpected state.
+[ -z "$(git status --porcelain)" ] || { echo "Working tree not clean — commit or stash first."; exit 1; }
+git fetch origin --tags
+git checkout main
+git merge --ff-only origin/main || { echo "Local main can't fast-forward to origin/main — reconcile first."; exit 1; }
+
 CURRENT=$(git tag --sort=-v:refname | grep '^v' | head -1)
 echo "Current version: ${CURRENT:-none}"
 
