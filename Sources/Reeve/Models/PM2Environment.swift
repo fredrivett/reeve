@@ -43,6 +43,27 @@ public struct PM2Environment: Identifiable, Hashable, Sendable {
 
     public var id: String { path }
 
+    /// macOS caps unix-domain socket paths (`sun_path`) at 104 characters. PM2
+    /// binds its control sockets at `PM2_HOME/<name>.sock`; the longest name it
+    /// uses is `interactor.sock`. If that full path exceeds the limit the daemon
+    /// can never bind or connect (`EINVAL`) — no amount of restarting fixes it.
+    static let maxSocketPathLength = 104
+    static let longestSocketPathComponent = "/interactor.sock"
+
+    /// Whether this workspace's PM2 socket path is too long to ever work. When
+    /// true, reeve must not run any `pm2` command against it: every command
+    /// auto-spawns a fresh daemon that immediately breaks, piling up zombies.
+    public var socketPathTooLong: Bool {
+        PM2Environment.socketPathTooLong(forHome: path)
+    }
+
+    /// Pure length check, extracted for testing. Measures UTF-8 bytes because
+    /// `sun_path` is a fixed 104-byte C buffer — a multi-byte character in the
+    /// path costs more than one byte, so grapheme count would under-report.
+    static func socketPathTooLong(forHome home: String) -> Bool {
+        (home + longestSocketPathComponent).utf8.count > maxSocketPathLength
+    }
+
     public init(path: String, isActive: Bool = false) {
         self.path = path
         self.isActive = isActive

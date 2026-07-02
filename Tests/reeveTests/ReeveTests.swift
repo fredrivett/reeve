@@ -1365,6 +1365,56 @@ struct ParsePortTests {
     }
 }
 
+// MARK: - Socket path length guard
+
+@Suite("PM2Environment.socketPathTooLong")
+struct SocketPathTooLongTests {
+
+    // The effective socket path is home + "/interactor.sock" (16 chars); macOS
+    // caps it at 104, so a home longer than 88 chars is too long.
+    private func home(length: Int) -> String {
+        "/" + String(repeating: "a", count: length - 1)
+    }
+
+    @Test("Short path is fine")
+    func shortPath() {
+        #expect(PM2Environment.socketPathTooLong(forHome: "/Users/x/.pm2") == false)
+    }
+
+    @Test("Home at the 88-char boundary is fine (path == 104)")
+    func atBoundary() {
+        let h = home(length: 88)
+        #expect(h.count == 88)
+        #expect(PM2Environment.socketPathTooLong(forHome: h) == false)
+    }
+
+    @Test("One char over the boundary is too long")
+    func overBoundary() {
+        #expect(PM2Environment.socketPathTooLong(forHome: home(length: 89)) == true)
+    }
+
+    @Test("The real over-long workspace path is flagged")
+    func realWorkspace() {
+        let h = "/Users/fredgptzero/.pm2-fredrivett-eng-4058-fix-re-scanning-to-be-page-by-page-and-show-scan-button-in"
+        #expect(PM2Environment.socketPathTooLong(forHome: h) == true)
+    }
+
+    @Test("Exposed instance property matches the static check")
+    func instanceProperty() {
+        let env = PM2Environment(path: home(length: 200))
+        #expect(env.socketPathTooLong == true)
+    }
+
+    @Test("Measures UTF-8 bytes, not grapheme count")
+    func countsBytesNotGraphemes() {
+        // 1 + 60 + 20 = 81 graphemes -> +16 = 97, under 104 by grapheme count,
+        // but 1 + 60 + 20*4 = 141 UTF-8 bytes -> well over the 104-byte limit.
+        let h = "/" + String(repeating: "a", count: 60) + String(repeating: "🚀", count: 20)
+        #expect((h + "/interactor.sock").count <= 104)          // grapheme count would pass
+        #expect(PM2Environment.socketPathTooLong(forHome: h) == true)  // byte count correctly fails
+    }
+}
+
 // MARK: - Address-in-use log detection
 
 @Suite("PM2Service.logReportsAddressInUse")
