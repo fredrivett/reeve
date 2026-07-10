@@ -309,7 +309,7 @@ public struct ContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .background(GeometryReader { proxy in
                         Color.clear.preference(key: ScrollContentHeightKey.self, value: proxy.size.height)
-                    }.id(inactiveExpanded))
+                    }.id(contentHeightSignature))
                 }
                 .frame(height: min(scrollContentHeight, configService.config.panelMaxHeight))
                 .animation(.none, value: scrollContentHeight)
@@ -327,6 +327,28 @@ public struct ContentView: View {
                 .keyboardShortcut("k", modifiers: .command)
                 .hidden()
         }
+    }
+
+    /// Composite of every piece of state that changes the scroll content's
+    /// height. Used as the `.id()` of the measuring GeometryReader so SwiftUI
+    /// recreates it — and takes a fresh measurement — whenever the content
+    /// grows or shrinks. On macOS 26 a GeometryReader in a MenuBarExtra window's
+    /// `.background` won't otherwise re-fire when sibling content is removed, so
+    /// without this the window keeps a stale (too-tall) height. See CLAUDE.md.
+    private var contentHeightSignature: Int {
+        var hasher = Hasher()
+        hasher.combine(filterText)
+        hasher.combine(inactiveExpanded)
+        hasher.combine(configService.config.showInactive)
+        hasher.combine(configService.config.collapsedEnvironments)
+        hasher.combine(configService.config.expandedInactiveEnvironments)
+        for env in pm2Service.environments {
+            hasher.combine(env.path)
+            hasher.combine(env.isActive)
+            hasher.combine((pm2Service.processesByEnvironment[env.path] ?? []).count)
+            hasher.combine(pm2Service.errorsByEnvironment[env.path])
+        }
+        return hasher.finalize()
     }
 
     private func envNameMatches(_ env: PM2Environment) -> Bool {
