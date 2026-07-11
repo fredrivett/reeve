@@ -345,8 +345,20 @@ public struct ContentView: View {
         for env in pm2Service.environments {
             hasher.combine(env.path)
             hasher.combine(env.isActive)
-            hasher.combine((pm2Service.processesByEnvironment[env.path] ?? []).count)
             hasher.combine(pm2Service.errorsByEnvironment[env.path])
+            // The number of rows actually rendered depends on the active filter,
+            // not the raw process count: a refresh can change which processes
+            // match (by name/ports) or whether the env matches (by name/branch)
+            // without changing the total count. Mirror the render logic (the
+            // `processes:` passed to EnvironmentSectionView) so any change to the
+            // displayed row count forces a fresh measurement. `matchesName` and
+            // the visible count together also capture whether the env is shown.
+            let matchesName = envNameMatches(env)
+            hasher.combine(matchesName)
+            let visibleProcessCount = matchesName
+                ? (pm2Service.processesByEnvironment[env.path] ?? []).count
+                : filteredProcesses(for: env.path).count
+            hasher.combine(visibleProcessCount)
         }
         return hasher.finalize()
     }
