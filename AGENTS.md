@@ -42,6 +42,8 @@ On macOS 26, a `GeometryReader` in the `.background` of a `VStack` inside a `Men
 
 **Fix:** tie the `GeometryReader`'s `.id()` to the state controlling the toggle. SwiftUI recreates it on change, forcing a fresh measurement.
 
+**Fragility:** the `.id()` must reflect *every* piece of state that changes the content's height, not just one toggle. In `ContentView` this is the `contentHeightSignature` hash (filter text, all collapse/expand state, per-env process counts and error presence, etc.). If you add a new dimension that grows or shrinks the list and forget to fold it into that signature, the height goes stale again: the window keeps its old (too-tall) size with the content vertically centred inside it. Update `contentHeightSignature` whenever you add such state.
+
 ### macOS 26 MenuBarExtra: ScrollView reports zero ideal height
 
 `ScrollView` inside a `MenuBarExtra` `.window` collapses to zero height on macOS 26. Fix:
