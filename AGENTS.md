@@ -11,6 +11,15 @@ swift test           # run tests
 ./release.sh         # tag and push a new release (see /release skill)
 ```
 
+## In Amp orbs
+
+Orbs run Linux, so `.agents/setup` only installs SwiftLint: run `swiftlint --strict` in the orb. Build, test and run reeve on a Mac satellite (the project uses the `macos-26` image).
+
+- **Tests:** the mirrored repo on the Mac has no `.git`, so the `GitInfo` test fails. Run `git init -q && git -c user.name=t -c user.email=t@t commit -q --allow-empty -m init && swift test; rm -rf .git`.
+- **Launching:** `mac_shell` runs outside the GUI session, so `./run.sh` builds the app but its `open` silently starts nothing. Build with `./run.sh`, then launch with `sudo -n launchctl asuser $(id -u) open .build/Reeve.app --args --demo`.
+- **Data:** `--demo` drives the whole UI from synthetic environments, no PM2 needed.
+- **Screenshots:** `screencapture` fails ("could not create image from display"). Use the Mac tab, or render the panel from inside the app with `NSView.cacheDisplay(in:to:)`.
+
 ## Project structure
 
 ```

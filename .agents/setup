@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Amp orb setup. Orbs run Linux, which has no AppKit or SwiftUI, so
+# `swift build` and `swift test` run on a Mac satellite (see AGENTS.md).
+# This installs SwiftLint so `swiftlint --strict` (CI's lint step) runs in
+# the orb itself.
+set -euo pipefail
+
+SWIFTLINT_VERSION=0.65.1
+SWIFTLINT_SHA256=caeed6f4a679c35539ffaf124f6c4ab4a8416917f7d8796279dc52b74026059d
+BIN_DIR="$HOME/.local/bin"
+
+if [ "$("$BIN_DIR/swiftlint" version 2>/dev/null || true)" = "$SWIFTLINT_VERSION" ]; then
+    echo "swiftlint $SWIFTLINT_VERSION already installed"
+    exit 0
+fi
+
+echo "Installing swiftlint $SWIFTLINT_VERSION"
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+curl -fsSL -o "$tmp/swiftlint.zip" \
+    "https://github.com/realm/SwiftLint/releases/download/$SWIFTLINT_VERSION/swiftlint_linux_amd64.zip"
+echo "$SWIFTLINT_SHA256  $tmp/swiftlint.zip" | sha256sum -c --quiet
+# The static build needs no Swift toolchain. Without SourceKit it skips one
+# rule (statement_position), which CI's macOS lint still checks.
+unzip -q -o "$tmp/swiftlint.zip" swiftlint-static -d "$tmp"
+mkdir -p "$BIN_DIR"
+install -m 755 "$tmp/swiftlint-static" "$BIN_DIR/swiftlint"
+"$BIN_DIR/swiftlint" version
