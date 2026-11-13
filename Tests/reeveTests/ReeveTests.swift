@@ -1440,3 +1440,36 @@ struct AddressInUseTests {
         #expect(!PM2Service.logReportsAddressInUse("INFO: Application startup complete on port 5008"))
     }
 }
+
+// MARK: - Menu bar panel window fitting
+
+@Suite("WindowFit.frame")
+struct WindowFitTests {
+    @Test("Shrinking keeps the top edge, so the panel stays under the menu bar")
+    func shrinkKeepsTop() {
+        let visible = CGRect(x: 0, y: 0, width: 1512, height: 945)
+        let current = CGRect(x: 456, y: 95, width: 600, height: 850)
+        let frame = WindowFit.frame(current: current, size: CGSize(width: 600, height: 667), visibleFrame: visible)
+        #expect(frame == CGRect(x: 456, y: 278, width: 600, height: 667))
+    }
+
+    @Test("A panel taller than the screen keeps its top under the menu bar and runs off the bottom")
+    func tallPanelPinsTop() {
+        // Menu bar above y = 770, Dock below y = 74. SwiftUI had grown the
+        // window upwards, putting its top at 917.
+        let visible = CGRect(x: 0, y: 74, width: 1280, height: 696)
+        let current = CGRect(x: 460, y: 64, width: 600, height: 853)
+        let frame = WindowFit.frame(current: current, size: CGSize(width: 600, height: 843), visibleFrame: visible)
+        #expect(frame == CGRect(x: 460, y: -73, width: 600, height: 843))
+    }
+
+    @Test("A panel past either side of the screen is pulled back on")
+    func clampsHorizontally() {
+        let visible = CGRect(x: 0, y: 0, width: 1280, height: 770)
+        let size = CGSize(width: 600, height: 400)
+        let pastRight = WindowFit.frame(current: CGRect(x: 900, y: 370, width: 600, height: 400), size: size, visibleFrame: visible)
+        #expect(pastRight == CGRect(x: 680, y: 370, width: 600, height: 400))
+        let pastLeft = WindowFit.frame(current: CGRect(x: -50, y: 370, width: 600, height: 400), size: size, visibleFrame: visible)
+        #expect(pastLeft == CGRect(x: 0, y: 370, width: 600, height: 400))
+    }
+}

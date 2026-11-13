@@ -30,6 +30,7 @@ struct ReeveApp: App {
 
         MenuBarExtra {
             ContentView()
+                .fitWindowToContent()
                 .environmentObject(pm2Service)
                 .environmentObject(configService)
                 .onAppear {

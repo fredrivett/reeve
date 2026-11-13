@@ -36,13 +36,11 @@ Branch from `main`. PRs target `main`. Commit messages are imperative, sentence-
 
 ## Known platform quirks
 
-### macOS 26 MenuBarExtra: GeometryReader doesn't re-fire on view removal
+### macOS 26 MenuBarExtra: window doesn't shrink with its content
 
-On macOS 26, a `GeometryReader` in the `.background` of a `VStack` inside a `MenuBarExtra` `.window` only re-evaluates when its *proposed size changes* — not when sibling content is removed. Collapsing a `DisclosureGroup` does not trigger a fresh height measurement.
+`MenuBarExtra` resizes its `.window` when SwiftUI reports a new root size, but sometimes misses a shrink. Its only fallback clamps the window between the content's min and max sizes on a later window layout pass, so the window keeps its old (too-tall) height with the content vertically centred inside it. It also grows the window up past the menu bar when content outgrows the screen.
 
-**Fix:** tie the `GeometryReader`'s `.id()` to the state controlling the toggle. SwiftUI recreates it on change, forcing a fresh measurement.
-
-**Fragility:** the `.id()` must reflect *every* piece of state that changes the content's height, not just one toggle. In `ContentView` this is the `contentHeightSignature` hash (filter text, all collapse/expand state, per-env process counts and error presence, etc.). If you add a new dimension that grows or shrinks the list and forget to fold it into that signature, the height goes stale again: the window keeps its old (too-tall) size with the content vertically centred inside it. Update `contentHeightSignature` whenever you add such state.
+**Fix:** `.fitWindowToContent()` (`WindowFitModifier.swift`) on the `MenuBarExtra` root sets the window frame itself: it measures the root with `onGeometryChange` and pins the top under the menu bar (`WindowFit.frame`). Nothing needs to list which state changes the height. Don't apply it to a window with a title bar: the bar's safe area makes the window taller than its root view, so the fit would fight SwiftUI.
 
 ### macOS 26 MenuBarExtra: ScrollView reports zero ideal height
 
@@ -50,4 +48,4 @@ On macOS 26, a `GeometryReader` in the `.background` of a `VStack` inside a `Men
 
 1. Use `VStack` (not `LazyVStack`) inside the ScrollView
 2. Add `.fixedSize(horizontal: false, vertical: true)` to the inner VStack
-3. Measure height via `GeometryReader` + `PreferenceKey` and apply as explicit `.frame(height:)` — `frame(maxHeight:)` alone resolves to zero
+3. Measure height with `onGeometryChange` and apply as explicit `.frame(height:)` — `frame(maxHeight:)` alone resolves to zero
