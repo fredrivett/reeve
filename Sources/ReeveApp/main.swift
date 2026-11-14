@@ -42,10 +42,7 @@ struct ReeveApp: App {
         } label: {
             let count = pm2Service.totalOnlineCount
             HStack(spacing: 4) {
-                Image(systemName: "person.and.background.striped.horizontal")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.primary, .primary)
-                    .font(.system(size: 22))
+                Image(nsImage: MenuBarIcon.image(for: pm2Service.health))
                 if configService.config.showMenuBarCount {
                     Text(pm2Service.hasCompletedFirstScan ? "\(count)" : "\u{2014}")
                 }

@@ -7,7 +7,8 @@ VERSION=$(cat VERSION)
 swift build
 
 APP_DIR=".build/Reeve.app/Contents"
-mkdir -p "$APP_DIR/MacOS"
+mkdir -p "$APP_DIR/MacOS" "$APP_DIR/Resources"
+cp assets/AppIcon.icns "$APP_DIR/Resources/AppIcon.icns"
 
 # In --window mode run as a regular app (dock icon, normal windows) so the
 # standalone panel reliably shows; otherwise stay a menu-bar-only agent.
@@ -34,6 +35,8 @@ cat > "$APP_DIR/Info.plist" << EOF
     <string>${VERSION}</string>
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 ${UI_ELEMENT}
 </dict>
 </plist>

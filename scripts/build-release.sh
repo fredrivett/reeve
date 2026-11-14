@@ -13,7 +13,8 @@ echo "Building Reeve v${VERSION}..."
 
 # Clean previous release bundle
 rm -rf "$BUILD_DIR"
-mkdir -p "$APP_DIR/MacOS"
+mkdir -p "$APP_DIR/MacOS" "$APP_DIR/Resources"
+cp "$PROJECT_DIR/assets/AppIcon.icns" "$APP_DIR/Resources/AppIcon.icns"
 
 # Build release binary
 cd "$PROJECT_DIR"
@@ -37,6 +38,8 @@ cat > "$APP_DIR/Info.plist" << EOF
     <string>${VERSION}</string>
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSUIElement</key>
     <true/>
 </dict>

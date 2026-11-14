@@ -677,6 +677,42 @@ struct CrashLoopingTests {
     }
 }
 
+// MARK: - Process Health
+
+@Suite("ProcessHealth")
+struct ProcessHealthTests {
+    private func process(_ status: String, restarts: Int = 0, uptimeAgoMs: Int64 = 600_000) throws -> PM2Process {
+        let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
+        return try decode("""
+        {
+            "pid": 1, "name": "x", "pm_id": 0,
+            "monit": { "memory": 0, "cpu": 0.0 },
+            "pm2_env": { "status": "\(status)", "restart_time": \(restarts), "pm_uptime": \(nowMs - uptimeAgoMs) }
+        }
+        """)
+    }
+
+    @Test("Online and deliberately stopped processes are healthy")
+    func healthy() throws {
+        let processes = [try process("online"), try process("stopped")]
+        #expect(ProcessHealth(processes: processes, hasDaemonErrors: false) == .healthy)
+    }
+
+    @Test("A crash-looping or launching process is a warning")
+    func warning() throws {
+        let looping = try process("online", restarts: 5, uptimeAgoMs: 5000)
+        #expect(ProcessHealth(processes: [try process("online"), looping], hasDaemonErrors: false) == .warning)
+        #expect(ProcessHealth(processes: [try process("launching")], hasDaemonErrors: false) == .warning)
+    }
+
+    @Test("An errored process or a daemon error outranks a warning")
+    func failing() throws {
+        let looping = try process("online", restarts: 5, uptimeAgoMs: 5000)
+        #expect(ProcessHealth(processes: [looping, try process("errored")], hasDaemonErrors: false) == .failing)
+        #expect(ProcessHealth(processes: [looping], hasDaemonErrors: true) == .failing)
+    }
+}
+
 // MARK: - Port Range Formatting
 
 @Suite("Port Range Formatting")

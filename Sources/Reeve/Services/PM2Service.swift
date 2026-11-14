@@ -19,6 +19,14 @@ public class PM2Service: ObservableObject {
         processesByEnvironment.values.flatMap { $0 }.filter(\.isOnline).count
     }
 
+    public var health: ProcessHealth {
+        guard hasCompletedFirstScan else { return .scanning }
+        return ProcessHealth(
+            processes: processesByEnvironment.values.flatMap { $0 },
+            hasDaemonErrors: !errorsByEnvironment.isEmpty
+        )
+    }
+
     private let resolver = PM2BinaryResolver()
     private let scanner = EnvironmentScanner()
     private let notificationService = NotificationService()
