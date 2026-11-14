@@ -9,8 +9,7 @@ cask "reeve" do
 
   app "Reeve.app"
 
-  postflight do
-    system_command "/usr/bin/xattr",
-      args: ["-c", "#{appdir}/Reeve.app"]
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-c", "{{appdir}}/Reeve.app"]
   end
 end
